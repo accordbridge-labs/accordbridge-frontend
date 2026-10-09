@@ -47,12 +47,18 @@ async function proxy(
       headers: responseHeaders,
     });
   } catch {
+    // Do not retry proxy writes. A timeout after a submission may mean the
+    // upstream processed it even though its response was lost.
+    const read = request.method === "GET" || request.method === "HEAD";
     return Response.json(
       {
-        message:
-          "The workspace service is unavailable. Your unsaved edits are still on this page.",
+        code: "UPSTREAM_UNAVAILABLE",
+        outcome: read ? "read_unavailable" : "unknown",
+        message: read
+          ? "The workspace service is unavailable (it may be starting). Your entered work remains on this page. Use Check connection to retry a safe read."
+          : "The service did not return a response. This action may have succeeded. Do not submit it again until you check its saved or on-chain state.",
       },
-      { status: 503 },
+      { status: 503, headers: { "cache-control": "no-store" } },
     );
   }
 }

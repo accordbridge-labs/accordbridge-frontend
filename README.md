@@ -1,6 +1,8 @@
 # AccordBridge Frontend
 
-**Status: connected local development workspace.** Next.js, React, TypeScript and Tailwind CSS provide authenticated projects backed by the NestJS/PostgreSQL service. The separate `/demo` route retains the sample payment simulator. Freighter wallet verification and experimental Stellar testnet escrow are available when configured on the backend. Hosted deployment is not configured.
+**Status: development/testnet prototype with hosted deployment configuration.** Next.js, React, TypeScript and Tailwind CSS provide authenticated projects backed by the NestJS/PostgreSQL service. The separate `/demo` route retains the sample payment simulator. Freighter wallet verification and experimental Stellar testnet escrow are available when configured on the backend.
+
+**Public frontend URL:** https://accordbridge-frontend.vercel.app (listed as the upstream repository's homepage; availability and end-to-end readiness must be verified on the actual deployment). The connected API relies on the deployed Render backend and Neon/PostgreSQL configuration; hosting alone does not prove live wallet acceptance. Use the [hosted two-participant acceptance runbook](docs/HOSTED-ACCEPTANCE.md) to capture evidence.
 
 ## Run locally
 
@@ -13,7 +15,7 @@ npm run dev
 
 Open http://127.0.0.1:3000. The frontend proxies `/api` to `http://127.0.0.1:4000` by default. To change that server-side target, copy `.env.example` to `.env.local` and set `BACKEND_URL`. Never expose it as a `NEXT_PUBLIC` variable. The backend's `FRONTEND_ORIGIN` must exactly match the browser origin; `localhost` and `127.0.0.1` are different origins.
 
-Vercel remains the intended frontend host. Hosting, domains, production proxy/cookie configuration and backend deployment are not configured.
+For hosted use, the frontend is configured for Vercel and the companion backend documents Render/PostgreSQL hosting. Confirm that `BACKEND_URL`, backend `FRONTEND_ORIGIN`, secure session cookies and actual deploy health match the current stable frontend URL. Do not assume a green deployment is evidence of two-wallet testnet readiness.
 
 ## Try the persistent workspace
 
@@ -25,6 +27,8 @@ Vercel remains the intended frontend host. Hosting, domains, production proxy/co
 6. **Propose changes** publishes a new version with fresh acceptance required. Previous versions retain their own acceptance records. A stale save or acceptance receives a conflict rather than silently overwriting newer terms.
 
 The workspace supports multiple projects. Only participants see their projects, and each author's unpublished drafts remain private. Sessions use HttpOnly cookies, not browser storage tokens. Sign-out revokes the server session. Edited text is not saved until a save or publish request succeeds; unsaved edits are lost on refresh. A conflict keeps the editor visible and offers an explicit reload/discard action.
+
+If the backend is asleep or an API response is interrupted, entered project, agreement and delivery fields remain visible while the page stays open. Select **Check connection** for a bounded, user-initiated health read; it does not retry any project/account modification. A timed-out write may already have been committed: inspect saved state before manually deciding what to do next. Do not refresh away unsaved fields unless you have copied or saved them.
 
 Accounts and agreement data persist in PostgreSQL. First-milestone test-token funding, release and mutual refund are connected. Versioned first-milestone delivery links, client review and revision requests are connected. Agreements currently use proposed development terms, not final live escrow policies. No funds move when accepting.
 
@@ -49,16 +53,19 @@ npm run test:workspace
 
 The demo suite starts the production frontend on port 3100. The connected suite requires the sibling backend to be built, `.env.test` configured for its isolated test database, and PostgreSQL running. It starts a separate API on port 4100 and a frontend proxy on port 3100; the development services remain untouched. Run these two browser suites sequentially because they use the same frontend test port.
 
-Connected browser checks use two authenticated accounts to save/resume drafts across refresh, publish and accept versions, revise terms, sign out and sign back in on desktop and mobile Chromium viewports. Test fixtures are synthetic and stay only in the test database. Backend tests separately verify access denial, conflicts, session revocation and persistence across an application restart.
+Connected browser checks use two authenticated accounts to save/resume drafts across refresh, publish and accept versions, revise terms, sign out and sign back in on desktop and mobile Chromium viewports. Test fixtures are synthetic and stay only in the test database. The recovery browser tests stub HTTP and stored **public intent identifiers**; they do not sign Freighter transactions. Backend tests separately verify access denial, conflicts, session revocation and persistence across an application restart.
+
+**Live evidence is separate:** The hosted [manual runbook](docs/HOSTED-ACCEPTANCE.md) tracks two browser profiles, different Freighter Testnet wallets, test XLM, ABUSD funding, real testnet confirmations and transaction hashes. All unexecuted hosted checks are explicitly **NOT RUN**; local or mocked tests must never be called live wallet acceptance.
 
 ## Implementation boundaries
 
 The frontend sends no caller role or user ID when accepting; the API derives both from the authenticated session and project membership. The same-origin proxy forwards only the required cookie, JSON, origin and anti-CSRF headers. Backend errors remain visible; an HTTP response is never presented as a chain payment.
 
-Email verification, password recovery, invitations, account deletion, file uploads, mainnet payments, notifications and production operations are not implemented. Keep this as a local development service until those launch decisions and operational controls are reviewed.
+Email verification, password recovery, invitations, account deletion, file uploads, mainnet payments, notifications and production operations are not implemented. Hosting is for a temporary, valueless-token testnet prototype only. Do not treat it as a production payment service until operational and security controls are reviewed.
 
 ## Documents
 
+- [Hosted two-participant testnet acceptance checklist](docs/HOSTED-ACCEPTANCE.md)
 - [Screen blueprint](docs/SCREENS.md)
 - [Detailed prototype blueprint](docs/PROTOTYPE-BLUEPRINT.md)
 - [Canonical product specification](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/PRODUCT.md)
@@ -79,7 +86,7 @@ Configure the backend using its [testnet guide](https://github.com/accordbridge-
 
 ABUSD has no monetary value and is not USDC. Existing nominal agreement amounts map to the same number of ABUSD only for this experiment. Only the first milestone is supported, with zero platform/provider fees and test-XLM network fees. There is no resolver, dispute freeze, automatic release, wallet recovery or storage-restoration workflow. This contract is unaudited and is not a production-provider selection.
 
-Cancelled signing leaves one prepared intent that can be resumed. Unknown submission keeps the existing hash pending and blocks another action. The check endpoint permits retry only after verified failure or expiry with sufficient retained ledger history; a missing history window requires investigation. A last-checked timestamp is a snapshot, not continuous monitoring.
+Cancelled signing leaves one prepared intent that can be resumed. Unknown submission keeps the existing hash pending and blocks another action. If the browser loses a signed submission response, the page retains the **public intent ID and hash** in per-profile session storage across refresh and requires an explicit **Check transaction & chain state** before another signed action. No signed XDR or authentication secret is stored there. The backend must establish a confirmed, failed or verified expired result before the browser clears an uncertain submission; missing retained ledger history requires investigation. A last-checked timestamp is a snapshot, not continuous monitoring.
 
 The backend and contracts record real testnet signature/transaction evidence. Automated browser checks do not drive the Freighter extension; manual extension approval remains a release check.
 
@@ -93,10 +100,10 @@ If actions are unavailable, use **Check transaction & chain state**: submission 
 
 Delivery links are shared with the project partner and open externally. AccordBridge stores the submitted URL and notes, not the file contents; grant destination access yourself. Uploads, immutable file evidence, notifications and multiple-milestone delivery remain future work.
 
-The connected browser suite now covers submission, revision, approval, preserved history and the separate release action on desktop and mobile, using synthetic chain snapshots in the isolated database.
+The connected browser suite covers submission, revision, approval, preserved history and the separate release action on desktop and mobile, using synthetic chain snapshots in the isolated database. The recovery suite adds simulated backend delays and interrupted responses, not real extension approvals.
 
 ## Vercel deployment
 
 Import this repository with Next.js, Node 24.x, root directory `.`, and the commands in `vercel.json`. Add the deployed API's HTTPS origin as **BACKEND_URL** in Vercel's Production environment, without `/api` or a trailing slash, then redeploy. This is a server-only variable. Do not upload local environment files or wallet fixture keys.
 
-The companion backend includes `render.yaml` and a [step-by-step hosting guide](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/HOSTING.md). Backend FRONTEND_ORIGIN must match the stable Vercel production origin exactly. Preview URLs need their own backend/origin configuration. The free Render database is temporary and expires after 30 days; this setup is a testnet demo. Hosted cookie, wallet and payment checks remain necessary after provisioning.
+The companion backend includes `render.yaml` and a [step-by-step hosting guide](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/HOSTING.md). Backend FRONTEND_ORIGIN must match the stable Vercel production origin exactly. Preview URLs need their own backend/origin configuration. Free-tier storage/service limitations and cold starts make this a temporary testnet demo. Hosted cookie, wallet and payment checks are documented as **not executed** until a separate operator records actual [acceptance evidence](docs/HOSTED-ACCEPTANCE.md).

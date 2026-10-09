@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   requestAccess,
   getNetworkDetails,
   signTransaction,
 } from "@stellar/freighter-api";
-import { api, Project } from "@/lib/api";
+import { api, Project, serviceUnavailable, submissionUncertain } from "@/lib/api";
+import { ConnectionCheck } from "@/components/connection-check";
 
 const TESTNET = "Test SDF Network ; September 2015";
 type Action = "deploy" | "accept" | "faucet" | "fund" | "release" | "refund";
@@ -101,6 +102,15 @@ export function TestnetEscrow({
   const [prepared, setPrepared] = useState<Prepared | null>(null);
   const [action, setAction] = useState<Action | null>(null);
   const [busy, setBusy] = useState(false);
+  const running = useRef(false);
+  const [unavailable, setUnavailable] = useState(false);
+  // This contains only public transaction identifiers, never signed XDR or keys.
+  // Session storage survives refresh in this browser profile so lost responses
+  // cannot accidentally enable a second signed payment.
+  const intentKey = `accordbridge:uncertain-testnet-intent:${project.id}`;
+  const preparationKey = `accordbridge:uncertain-testnet-prepare:${project.id}`;
+  const [uncertain, setUncertain] = useState<{ id: string; hash: string } | null>(null);
+  const [uncertainPreparation, setUncertainPreparation] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const current = project.versions.find(
@@ -109,11 +119,23 @@ export function TestnetEscrow({
   const pending = status?.intents.find((intent) =>
     ["prepared", "submitted"].includes(intent.state),
   );
+  const needsReconciliation = Boolean(uncertain || uncertainPreparation);
   const chain = status?.escrow?.state;
   const isClient = project.role === "client";
   async function refresh() {
     setStatus(await api<Status>(`/testnet/projects/${project.id}`));
+    setUnavailable(false);
   }
+  useEffect(() => {
+    try {
+      const remembered = window.sessionStorage.getItem(intentKey);
+      setUncertain(remembered ? JSON.parse(remembered) : null);
+      setUncertainPreparation(window.sessionStorage.getItem(preparationKey) === "1");
+    } catch {
+      // Fail closed if browser storage is blocked or corrupt.
+      setUncertainPreparation(true);
+    }
+  }, [intentKey, preparationKey]);
   useEffect(() => {
     let active = true;
     (async () => {
@@ -127,39 +149,68 @@ export function TestnetEscrow({
           setStatus(state);
         }
       } catch (cause) {
-        if (active)
+        if (active) {
+          setUnavailable(serviceUnavailable(cause));
           setError(
             cause instanceof Error
               ? cause.message
               : "Unable to load testnet status.",
           );
+        }
       }
     })();
     return () => {
       active = false;
     };
-  }, [project]);
+  }, [project.id]);
+  async function recoverStatus() {
+    const [linked, state] = await Promise.all([
+      api<{ address: string | null; enabled: boolean }>("/testnet/wallet"),
+      api<Status>(`/testnet/projects/${project.id}`),
+    ]);
+    setWallet(linked);
+    setStatus(state);
+    setUnavailable(false);
+    setError("");
+    // This is intentionally read-only. A pending submission still requires
+    // the explicit chain-reconciliation action below.
+  }
   async function run(work: () => Promise<void>) {
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
     setError("");
     setMessage("");
     try {
       await work();
+      setUnavailable(false);
     } catch (cause) {
+      setUnavailable(serviceUnavailable(cause));
       setError(
         cause instanceof Error ? cause.message : "Testnet request failed.",
       );
     } finally {
+      running.current = false;
       setBusy(false);
     }
   }
   async function prepare(next: Action) {
+    if (needsReconciliation) return;
     await run(async () => {
-      const transaction = await api<Prepared>(
-        `/testnet/projects/${project.id}/prepare`,
-        "POST",
-        { action: next, version: project.currentVersion },
-      );
+      let transaction: Prepared;
+      try {
+        transaction = await api<Prepared>(
+          `/testnet/projects/${project.id}/prepare`,
+          "POST",
+          { action: next, version: project.currentVersion },
+        );
+      } catch (cause) {
+        if (submissionUncertain(cause)) {
+          setUncertainPreparation(true);
+          window.sessionStorage.setItem(preparationKey, "1");
+        }
+        throw cause;
+      }
       setPrepared(transaction);
       setAction(next);
       await refresh();
@@ -168,13 +219,32 @@ export function TestnetEscrow({
   }
   async function check() {
     await run(async () => {
-      setStatus(
-        await api<Status>(`/testnet/projects/${project.id}/check`, "POST"),
+      // Explicit user action: the backend reconciles the EXISTING intent
+      // against retained ledger history. No transaction is resubmitted.
+      const checked = await api<Status>(
+        `/testnet/projects/${project.id}/check`,
+        "POST",
       );
+      setStatus(checked);
       setPrepared(null);
+      if (uncertainPreparation) {
+        window.sessionStorage.removeItem(preparationKey);
+        setUncertainPreparation(false);
+      }
+      if (uncertain) {
+        const recorded = checked.intents.find((item) => item.id === uncertain.id);
+        if (recorded && ["confirmed", "failed", "expired"].includes(recorded.state)) {
+          window.sessionStorage.removeItem(intentKey);
+          setUncertain(null);
+        }
+      }
       await onChange();
       setMessage(
-        "Checked the transaction and contract against Stellar testnet.",
+        uncertain && !checked.intents.some((item) =>
+          item.id === uncertain.id && ["confirmed", "failed", "expired"].includes(item.state),
+        )
+          ? "The existing submission is not yet confirmed failed or settled. Do not sign again; check this same intent after the network recovers."
+          : "Checked the existing transaction and contract against Stellar testnet.",
       );
     });
   }
@@ -199,10 +269,20 @@ export function TestnetEscrow({
         can move tokens, and there is no automatic timeout release. Preparing
         deployment locks this agreement even if you cancel wallet signing.
       </p>
-      {error && (
-        <p className="workspace-error" role="alert">
-          {error}
+      {busy && (
+        <p className="small" role="status" aria-live="polite">
+          Checking or preparing a testnet action… Do not submit another request.
         </p>
+      )}
+      {error && (
+        <div className="workspace-error" role="alert">
+          <p>{error}</p>
+          {unavailable && <ConnectionCheck onRecovered={recoverStatus} />}
+          <p className="small">
+            A timed-out signed submission is not a confirmed failure. Check the
+            existing intent and its chain state before any new payment action.
+          </p>
+        </div>
       )}
       {message && (
         <p className="workspace-notice" role="status">
@@ -320,19 +400,33 @@ export function TestnetEscrow({
               </div>
             </details>
           )}
-          {pending ? (
+          {needsReconciliation && (
+            <div className="workspace-error" role="alert">
+              <strong>Transaction outcome not yet reconciled</strong>
+              <p>
+                The response was interrupted. A signed transaction may already
+                have reached testnet. Only use “Check transaction & chain state”;
+                do not sign, fund, release or refund again yet.
+              </p>
+              {uncertain && <code>{uncertain.hash}</code>}
+            </div>
+          )}
+          {pending || needsReconciliation ? (
             <div className="policy-note">
               <p>
-                {pending.action}:{" "}
-                {pending.state === "prepared"
+                {pending?.action ?? "Existing intent"}:{" "}
+                {pending?.state === "prepared"
                   ? "Awaiting wallet signing or expiry"
-                  : "Submitted; outcome not yet confirmed"}
+                  : pending?.state === "submitted"
+                    ? "Submitted; outcome not yet confirmed"
+                    : "Interrupted submission; outcome not yet confirmed"}
                 . Check the existing transaction before another action.
               </p>
-              <code>{pending.hash}</code>
-              {pending.userId === userId &&
+              <code>{pending?.hash ?? uncertain?.hash ?? "Check the current intent"}</code>
+              {pending?.userId === userId &&
                 pending.state === "prepared" &&
-                !prepared && (
+                !prepared &&
+                !needsReconciliation && (
                   <button
                     className="secondary"
                     disabled={busy}
@@ -454,24 +548,29 @@ export function TestnetEscrow({
               </p>
               <button
                 className="primary"
-                disabled={busy}
+                disabled={busy || needsReconciliation}
                 onClick={() =>
                   run(async () => {
                     const signedXdr = await sign(
                       prepared.xdr,
                       prepared.address,
                     );
+                    // Set the guard *before* sending; even a lost response or
+                    // page refresh must not trigger a second signature.
+                    const marker = { id: prepared.id, hash: prepared.hash };
+                    window.sessionStorage.setItem(intentKey, JSON.stringify(marker));
+                    setUncertain(marker);
+                    setPrepared(null);
                     const result = await api<{ state: string }>(
                       `/testnet/projects/${project.id}/submit`,
                       "POST",
-                      { intentId: prepared.id, signedXdr },
+                      { intentId: marker.id, signedXdr },
                     );
-                    setPrepared(null);
                     await refresh();
                     setMessage(
                       result.state === "unknown"
-                        ? "Submission outcome unknown. Check this transaction before retrying."
-                        : "Submitted to testnet. Check the transaction to confirm its result.",
+                        ? "Submission outcome unknown. Check this same transaction before retrying."
+                        : "Submission recorded. Check the existing transaction to confirm its result.",
                     );
                   })
                 }

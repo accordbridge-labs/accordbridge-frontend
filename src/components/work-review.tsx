@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
-import { api, Project } from "@/lib/api";
+import { useEffect, useRef, useState } from "react";
+import { api, Project, serviceUnavailable } from "@/lib/api";
+import { ConnectionCheck } from "@/components/connection-check";
 
 type Submission = {
   id: string;
@@ -30,8 +31,10 @@ export function WorkReview({
   const [links, setLinks] = useState("");
   const [feedback, setFeedback] = useState("");
   const [busy, setBusy] = useState(false);
+  const running = useRef(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [unavailable, setUnavailable] = useState(false);
   const agreement = project.versions.find(
     (v) => v.version === project.currentVersion,
   )?.agreement;
@@ -46,28 +49,51 @@ export function WorkReview({
         if (active) setWork(value);
       })
       .catch((cause) => {
-        if (active) setError(cause.message);
+        if (active) {
+          setError(cause instanceof Error ? cause.message : "Unable to load submissions.");
+          setUnavailable(serviceUnavailable(cause));
+        }
       });
     return () => {
       active = false;
     };
   }, [project]);
-  async function run(operation: () => Promise<unknown>, success: string) {
+  async function refreshWork() {
+    const current = await api<Work>(`/projects/${project.id}/work`);
+    setWork(current);
+    setUnavailable(false);
+    setError("");
+  }
+  async function run(
+    operation: () => Promise<unknown>,
+    success: string,
+    afterConfirmed?: () => void,
+  ) {
+    if (running.current) return;
+    running.current = true;
     setBusy(true);
     setError("");
     setMessage("");
+    let completed = false;
     try {
       await operation();
-      setWork(await api<Work>(`/projects/${project.id}/work`));
+      completed = true;
+      await refreshWork();
       await onChange();
+      afterConfirmed?.();
       setMessage(success);
     } catch (cause) {
+      setUnavailable(serviceUnavailable(cause));
       setError(
-        cause instanceof Error
-          ? cause.message
-          : "Unable to save. Refresh before retrying.",
+        (cause instanceof Error ? cause.message : "Unable to save.") +
+          (completed
+            ? " The write may already be saved. Check the current project before submitting again."
+            : serviceUnavailable(cause)
+              ? " The outcome may be unknown. Check saved state before submitting again."
+              : ""),
       );
     } finally {
+      running.current = false;
       setBusy(false);
     }
   }
@@ -91,10 +117,16 @@ export function WorkReview({
         client’s separate wallet signature. The experimental contract permits
         client release outside this app without a recorded review.
       </p>
+      {busy && <p className="small" role="status" aria-live="polite">Saving or checking your work…</p>}
       {error && (
-        <p className="workspace-error" role="alert">
-          {error}
-        </p>
+        <div className="workspace-error" role="alert">
+          <p>{error}</p>
+          {unavailable && <ConnectionCheck onRecovered={refreshWork} />}
+          <p className="small">
+            Your delivery notes, links and review feedback remain in their fields.
+            Check saved history before repeating a write.
+          </p>
+        </div>
       )}
       {message && (
         <p className="workspace-notice" role="status">
@@ -148,9 +180,10 @@ export function WorkReview({
                           .filter(Boolean),
                       },
                     );
+                  }, "Submission saved. Your client can now review this version.", () => {
                     setNotes("");
                     setLinks("");
-                  }, "Submission saved. Your client can now review this version.");
+                  });
                 }}
               >
                 <label>
@@ -235,8 +268,7 @@ export function WorkReview({
                           feedback,
                         },
                       );
-                      setFeedback("");
-                    }, "Revision request saved. The freelancer can submit a new version.")
+                    }, "Revision request saved. The freelancer can submit a new version.", () => setFeedback(""))
                   }
                 >
                   Request revisions

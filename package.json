@@ -7,7 +7,7 @@
     "build": "next build --webpack",
     "start": "next start --hostname 127.0.0.1",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/lib/demo.test.ts",
+    "test": "tsx --test src/lib/demo.test.ts src/lib/connection.test.ts",
     "test:e2e": "playwright test",
     "test:workspace": "playwright test --config playwright.workspace.config.ts",
     "format": "prettier --write src tests *.ts *.mjs *.json",
