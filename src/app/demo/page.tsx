@@ -1,6 +1,7 @@
 "use client";
 
 import { useReducer, useState } from "react";
+import { DemoScenarios } from "@/components/demo-scenarios";
 import {
   ArrowDownLeft,
   ArrowRight,
@@ -59,10 +60,15 @@ export default function Home() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [draftVersion, setDraftVersion] = useState(1);
+  const [scenarioKey, setScenarioKey] = useState(0);
   const agreement = state.agreement;
   const milestone = agreement.milestones[0];
   const payment = payout(milestone.amount);
-  const projectTotal = total(agreement);
+  const projectTotal =
+    total(agreement) +
+    (state.extra && !["proposed", "rejected"].includes(state.extra.status)
+      ? 200
+      : 0);
   const criteria = milestone.criteria.split("\n").filter((line) => line.trim());
   const canEdit = ["agreement", "unfunded"].includes(state.stage);
   const funds = balances(state);
@@ -77,15 +83,20 @@ export default function Home() {
       ? "Both parties"
       : ["working", "revision"].includes(state.stage)
         ? "Tobi · Freelancer"
-        : ["review", "unfunded"].includes(state.stage)
+        : ["review", "unfunded", "funding-failed"].includes(state.stage)
           ? "Maya · Client"
           : state.stage === "disputed"
             ? "Reviewer"
-            : state.stage === "released"
-              ? "Milestone complete"
-              : "Demo transaction check";
+            : state.stage === "settling"
+              ? "Both parties / demo settlement check"
+              : state.stage === "settled"
+                ? "First milestone settled"
+                : state.stage === "released"
+                  ? "Milestone complete"
+                  : "Demo transaction check";
 
   function reset(scenario: "new" | "funded" | "review") {
+    setScenarioKey((key) => key + 1);
     dispatch({ type: "reset", scenario });
     setApprovalOpen(false);
     setFeedback("");
@@ -115,7 +126,11 @@ export default function Home() {
                     ? "First milestone, completed."
                     : state.stage === "disputed"
                       ? "A decision needs a human reviewer."
-                      : "Let’s check where the payment stands."}
+                      : state.stage === "settled"
+                        ? "Sample settlement confirmed."
+                        : state.stage === "settling"
+                          ? "Review the proposed settlement below."
+                          : "Let’s check where the payment stands."}
       </h2>
       <p>
         {state.stage === "agreement"
@@ -131,8 +146,10 @@ export default function Home() {
                   : state.stage === "released"
                     ? "The sample payout is confirmed. Any remaining milestones still need their own funding."
                     : state.stage === "disputed"
-                      ? `${money(payment.gross)} USDC remains held. This demo stops at a pending reviewer decision; no settlement is implied.`
-                      : "A submitted transaction is not a confirmed payment. Use the demo control below to simulate checking its result."}
+                      ? `${money(payment.gross)} USDC remains held for this milestone. Explore an illustrative, mutually authorized split below; no real reviewer is contacted.`
+                      : ["settling", "settled"].includes(state.stage)
+                        ? "See the itemized cancellation or split record below. Extra-work deposits, if any, stay separate."
+                        : "A submitted transaction is not a confirmed payment. Use the demo control below to simulate checking its result."}
       </p>
       <div className="action-footer">
         <span className="muted">
@@ -184,8 +201,15 @@ export default function Home() {
               </p>
             </>
           )}
-          {state.stage === "unfunded" && (
+          {["unfunded", "funding-failed"].includes(state.stage) && (
             <>
+              {state.stage === "funding-failed" && (
+                <p role="alert">
+                  The demo check confirmed deposit failure. No funds moved.
+                  Retry only after a confirmed failure, never merely after a
+                  timeout.
+                </p>
+              )}
               <div className="funding-details">
                 <span>
                   Asset <strong>Sample USDC · Stellar demo</strong>
@@ -246,6 +270,14 @@ export default function Home() {
                   onClick={() => dispatch({ type: "funding-unknown" })}
                 >
                   Simulate unknown outcome
+                </button>
+              )}
+              {["funding-pending", "funding-unknown"].includes(state.stage) && (
+                <button
+                  className="secondary"
+                  onClick={() => dispatch({ type: "fail-funding" })}
+                >
+                  Check transaction · simulate confirmed failure
                 </button>
               )}
             </div>
@@ -357,9 +389,21 @@ export default function Home() {
                   value={feedback}
                   onChange={(event) => setFeedback(event.target.value)}
                 />
-                <button className="secondary" disabled={!feedback.trim()}>
+                <button
+                  className="secondary"
+                  disabled={
+                    !feedback.trim() ||
+                    state.revisionsUsed >= agreement.revisions
+                  }
+                >
                   Request revision
                 </button>
+                {state.revisionsUsed >= agreement.revisions && (
+                  <p>
+                    Included revision rounds exhausted. Consider a separately
+                    funded change or request review.
+                  </p>
+                )}
               </form>
             </>
           )}
@@ -546,6 +590,43 @@ export default function Home() {
             >
               03 Client review
             </button>
+            <button
+              onClick={() => {
+                reset("funded");
+                setView("Project workspace");
+                setRole("client");
+              }}
+            >
+              04 Extra work
+            </button>
+            <button
+              onClick={() => {
+                reset("review");
+                setView("Project workspace");
+                setRole("freelancer");
+              }}
+            >
+              05 Client silence
+            </button>
+            <button
+              onClick={() => {
+                reset("funded");
+                setView("Project workspace");
+                setRole("client");
+              }}
+            >
+              06 Cancellation
+            </button>
+            <button
+              onClick={() => {
+                reset("review");
+                dispatch({ type: "dispute", role: "client" });
+                setView("Resolution centre");
+                setRole("client");
+              }}
+            >
+              07 Split settlement
+            </button>
             <button className="reset" onClick={() => reset("new")}>
               <RotateCcw size={13} /> Reset
             </button>
@@ -597,11 +678,17 @@ export default function Home() {
               </strong>
               <p>
                 {funds.released
-                  ? `${money(payment.net)} USDC net after illustrative fee`
+                  ? `${money(payout(String(funds.released)).net)} USDC net after illustrative fee`
                   : "No confirmed sample payouts yet"}
               </p>
             </div>
           </div>
+          {funds.refunded > 0 && (
+            <p className="policy-note" role="status">
+              Confirmed sample refund to Maya: {money(funds.refunded)} USDC.
+              This is not unfunded work or a freelancer payout.
+            </p>
+          )}
           {view === "Overview" && (
             <>
               {actionPanel}
@@ -891,7 +978,8 @@ export default function Home() {
                   <h3>More work? A new agreement.</h3>
                   <p>
                     Extra scope needs mutual acceptance and separate funding.
-                    Change requests are planned for the next slice.
+                    Explore the separate sample change proposal below. It does
+                    not modify the deployed contract.
                   </p>
                 </div>
               </aside>
@@ -957,6 +1045,8 @@ export default function Home() {
                     transaction or tax document. Network fees are not estimated.
                   </p>
                 </>
+              ) : state.stage === "settled" ? (
+                <p>The itemized sample settlement receipt is below.</p>
               ) : (
                 <div className="empty-state">
                   <FileCheck2 size={30} />
@@ -1008,14 +1098,20 @@ export default function Home() {
                   )}
                   <p className="policy-note">
                     Reviewer powers, response deadlines, settlement fees, and
-                    appeals are unresolved policy decisions. This case stays
-                    pending; the demo does not authorize a payout or a refund.
+                    appeals are unresolved policy decisions. The case stays
+                    pending unless you explicitly explore and mutually authorize
+                    a synthetic allocation below. This does not authorize a real
+                    payout or refund.
                   </p>
                 </>
               ) : (
                 <div className="empty-state">
                   <ShieldCheck size={34} />
-                  <h3>No open cases.</h3>
+                  <h3>
+                    {state.settlement
+                      ? "Settlement record below."
+                      : "No open cases."}
+                  </h3>
                   <p>
                     If an agreed requirement is in dispute, open a case from a
                     funded milestone’s workspace.
@@ -1030,6 +1126,13 @@ export default function Home() {
               )}
             </section>
           )}
+          <DemoScenarios
+            key={scenarioKey}
+            state={state}
+            role={role}
+            dispatch={dispatch}
+            view={view}
+          />
           <footer>
             <span>AccordBridge Labs · Product prototype</span>
             <span>

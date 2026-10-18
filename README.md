@@ -52,9 +52,9 @@ Accounts and agreement data persist in PostgreSQL. First-milestone test-token fu
 
 Open `/demo` or **Explore payment demo**. It has fictional Maya/Tobi role controls and a single replaceable sample project. All its data stays in memory and resets on refresh. Nothing from this route is imported into your saved projects, and simulated payment states never update the backend.
 
-The demo covers editable agreements, acceptance, the first milestone's simulated funding, versioned submissions, revisions, approval, payout confirmation and receipt. Unknown funding outcomes cannot start another deposit. Disputes retain funds and stop at a pending decision. Later milestones remain unfunded. Paid scope changes, cancellation settlement and review timers remain outstanding.
+The demo covers editable agreements, acceptance, first-milestone simulated funding, versioned submissions, bounded revisions, approval, payout confirmation and receipt. It also includes a separately accepted/funded online-store change, a manually advanced review clock, client-silence escalation, mutually authorized cancellation and itemized split settlement. Pending or unknown deposits/settlements cannot be submitted again. Later base milestones remain unfunded, and extra-work deposits are never consumed by first-milestone settlement. See the [six-scenario walkthrough](docs/DEMO-SCENARIOS.md).
 
-Demo prices use integer cents for display calculations and a 0.3% illustrative provider fee rounded to cents. This is not a specification of Stellar asset precision or deployed contract fee logic. Resolver, cancellation, appeal and final pricing terms remain unresolved.
+Demo prices use integer cents for allocations and a 0.3% illustrative provider fee on the freelancer allocation, rounded to cents; refund/platform fees are illustrated as zero and network fees are not estimated. This is not a specification of Stellar asset precision or deployed contract fee logic. Both sample participants authorize a cancellation/split before a separate simulated submission and confirmation. Resolver authority, cancellation, appeal and final pricing terms remain unresolved. None of these new demo flows is enabled in the persistent workspace or Testnet contract.
 
 ## Checks
 
