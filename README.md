@@ -1,10 +1,26 @@
 # AccordBridge Frontend
 
+[![Frontend checks](https://github.com/accordbridge-labs/accordbridge-frontend/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/accordbridge-labs/accordbridge-frontend/actions/workflows/ci.yml)
+
+[Local setup](#run-locally) · [Workspace walkthrough](#try-the-persistent-workspace) · [Checks](#checks) · [Wallet flow](#try-stellar-testnet-escrow) · [Contribute](https://github.com/accordbridge-labs/.github/blob/main/docs/START-HERE.md)
+
 **Status: development/testnet prototype with hosted deployment configuration.** Next.js, React, TypeScript and Tailwind CSS provide authenticated projects backed by the NestJS/PostgreSQL service. The separate `/demo` route retains the sample payment simulator. Freighter wallet verification and experimental Stellar testnet escrow are available when configured on the backend.
 
 **Public frontend URL:** https://accordbridge-frontend.vercel.app (listed as the upstream repository's homepage; availability and end-to-end readiness must be verified on the actual deployment). The connected API relies on the deployed Render backend and Neon/PostgreSQL configuration; hosting alone does not prove live wallet acceptance. Use the [hosted two-participant acceptance runbook](docs/HOSTED-ACCEPTANCE.md) to capture evidence.
 
 ## Run locally
+
+This repo is the client/freelancer interface. The [backend](https://github.com/accordbridge-labs/accordbridge-backend)
+owns sessions, project access and transaction reconciliation; the
+[contracts](https://github.com/accordbridge-labs/accordbridge-contracts) enforce
+on-chain authorization and settlement. Freighter holds wallet keys and signs
+prepared transactions; an API response or work approval is not payment confirmation.
+
+| Entry point | What to expect |
+| --- | --- |
+| `/` | Account access and the persistent project workspace; requires the backend. |
+| `/demo` | In-memory sample workflow; refresh resets it, and simulated balances never fund an escrow. |
+| First-milestone escrow panel | Testnet wallet proofs, signing and explicit chain-state checks; requires backend Testnet configuration. |
 
 Use Node.js 22.12+ or Node 24 LTS. First start the sibling [backend](https://github.com/accordbridge-labs/accordbridge-backend) following its README, including database setup and migrations.
 
@@ -109,4 +125,4 @@ The connected browser suite covers submission, revision, approval, preserved his
 
 Import this repository with Next.js, Node 24.x, root directory `.`, and the commands in `vercel.json`. Add the deployed API's HTTPS origin as **BACKEND_URL** in Vercel's Production environment, without `/api` or a trailing slash, then redeploy. This is a server-only variable. Do not upload local environment files or wallet fixture keys.
 
-The companion backend includes `render.yaml` and a [step-by-step hosting guide](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/HOSTING.md). Backend FRONTEND_ORIGIN must match the stable Vercel production origin exactly. Preview URLs need their own backend/origin configuration. Free-tier storage/service limitations and cold starts make this a temporary testnet demo. Hosted cookie, wallet and payment checks are documented as **not executed** until a separate operator records actual [acceptance evidence](docs/HOSTED-ACCEPTANCE.md).
+The companion backend includes `render.yaml` and a [step-by-step hosting guide](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/HOSTING.md). Backend FRONTEND_ORIGIN must match the stable Vercel production origin exactly. Preview URLs need their own backend/origin configuration. Free-tier storage/service limitations and cold starts make this a temporary testnet demo. A [limited hosted preflight](docs/HOSTED-PREFLIGHT.md) recorded account/session, cookie and agreement checks on 18 October 2026. Hosted two-wallet signing and payment acceptance remain **NOT RUN** in the [manual runbook](docs/HOSTED-ACCEPTANCE.md); the preflight does not replace them.
