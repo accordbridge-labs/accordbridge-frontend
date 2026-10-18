@@ -2,6 +2,8 @@
 
 **Execution status: NOT RUN.** This document is a manual test procedure, not evidence that the public deployment or Freighter flow has passed. Do not convert a checklist entry to PASS without observing it on the hosted Vercel/Render/Neon environment and retaining the allowed evidence below.
 
+A separate [hosted HTTP/browser preflight](HOSTED-PREFLIGHT.md) passed on 18 October 2026. It verified sessions and persisted agreements but did not use Freighter; H01–H26 remain unexecuted as a complete manual wallet acceptance run.
+
 **Published frontend URL:** https://accordbridge-frontend.vercel.app (repository homepage; reachability must be confirmed during the run). The API origin is the separately configured Render URL; do not put its database connection string or private environment variables into evidence. The backend is documented in [HOSTING](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/HOSTING.md) and [TESTNET](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/TESTNET.md).
 
 ## Test boundaries
