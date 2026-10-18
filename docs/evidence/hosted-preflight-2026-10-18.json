@@ -1,0 +1,42 @@
+{
+  "observedAt": "2026-10-18T11:53:51.018Z",
+  "completedAt": "2026-10-18T11:54:13.377Z",
+  "origin": "https://accordbridge-frontend.vercel.app",
+  "frontendMainCommit": "6672699b9a0ccf2f5f37f30c3c87d95fb2cd6d4b",
+  "frontendDeploymentStatus": "GitHub Vercel status reports success for this commit; the HTTP page does not expose a commit identifier",
+  "backendSourceCommit": "15d5fe59a240474fc3e22b4ac4b95f5feeab1e7c",
+  "backendDeployedCommit": "Not exposed by the public API; authenticated readiness route observed working",
+  "checks": [
+    {
+      "name": "Public health and authenticated endpoint boundaries",
+      "result": "PASS"
+    },
+    {
+      "name": "Cross-origin mutation rejected before authentication",
+      "result": "PASS"
+    },
+    {
+      "name": "Public page renders sign-in interface in Chromium",
+      "result": "PASS"
+    },
+    {
+      "name": "Separate hosted accounts and Secure/HttpOnly/SameSite session cookies",
+      "result": "PASS"
+    },
+    {
+      "name": "Publish and independently accept one agreement; no funding starts",
+      "result": "PASS"
+    },
+    {
+      "name": "Logout isolates accounts; a new session reads persisted agreement",
+      "result": "PASS"
+    },
+    {
+      "name": "Hosted authenticated Testnet readiness reports ready",
+      "result": "PASS"
+    }
+  ],
+  "readiness": { "httpStatus": 200, "status": "ready" },
+  "fixtures": "Two synthetic example.test accounts and one unfunded synthetic project remain. Account deletion is not implemented. Credentials were generated in memory and not retained; the script requested logout for both accounts during cleanup.",
+  "walletAcceptance": "NOT RUN: no Freighter profiles, wallet signatures, funding or settlement tested"
+}

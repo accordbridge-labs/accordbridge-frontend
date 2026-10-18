@@ -68,6 +68,7 @@ Email verification, password recovery, invitations, account deletion, file uploa
 ## Documents
 
 - [Hosted two-participant testnet acceptance checklist](docs/HOSTED-ACCEPTANCE.md)
+- [Hosted preflight procedure and observed results](docs/HOSTED-PREFLIGHT.md)
 - [Screen blueprint](docs/SCREENS.md)
 - [Detailed prototype blueprint](docs/PROTOTYPE-BLUEPRINT.md)
 - [Canonical product specification](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/PRODUCT.md)
