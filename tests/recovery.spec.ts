@@ -37,7 +37,7 @@ test("a delayed backend remains unavailable until an explicit bounded connection
   });
 
   await page.goto("/");
-  await expect(page.getByRole("alert")).toContainText("Workspace service unavailable");
+  await expect(page.getByRole("alert").filter({ hasText: "Workspace service unavailable" })).toBeVisible();
   expect(probes).toBe(0); // no background keep-alive traffic
   await page.getByRole("button", { name: "Check connection" }).click();
   await expect(page.getByRole("button", { name: "New project" })).toBeVisible();
@@ -83,13 +83,15 @@ test("a lost project-creation response preserves form fields without retrying th
   await page.getByLabel("Project title").fill("Unsent test project");
   await page.getByLabel("Counterparty account ID").fill("partner-1");
   await page.getByRole("button", { name: "Create project & edit agreement" }).click();
-  await expect(page.getByRole("alert")).toContainText("No response from the backend");
+  await expect(page.getByRole("alert").filter({ hasText: "No response from the backend" })).toBeVisible();
   await expect(page.getByLabel("Project title")).toHaveValue("Unsent test project");
   await expect(page.getByLabel("Counterparty account ID")).toHaveValue("partner-1");
   await page.getByRole("button", { name: "Check connection" }).click();
+  // Clicking starts async recovery; unchanged form fields alone do not prove
+  // that the safe project refresh has finished on a slower CI runner.
+  await expect.poll(() => getCount).toBeGreaterThanOrEqual(2);
   await expect(page.getByLabel("Project title")).toHaveValue("Unsent test project");
   expect(postCount).toBe(1); // never repeats an uncertain mutation
-  expect(getCount).toBeGreaterThanOrEqual(2);
 });
 
 test("an unknown signed transaction remains locked across refresh until explicit reconciliation", async ({

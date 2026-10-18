@@ -42,6 +42,8 @@ Demo prices use integer cents for display calculations and a 0.3% illustrative p
 
 ## Checks
 
+GitHub Actions runs unit tests, the production build, type checking, and desktop/mobile demo and recovery browser tests on pull requests. A separate job runs the connected workspace suite against PostgreSQL 16 and a pinned backend commit. Update that reviewed API baseline deliberately when coordinating backend changes. Wallet/chain fixtures remain synthetic in browser tests.
+
 ```sh
 npm run typecheck
 npm test

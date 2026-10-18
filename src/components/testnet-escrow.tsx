@@ -162,7 +162,9 @@ export function TestnetEscrow({
     return () => {
       active = false;
     };
-  }, [project.id]);
+  // Work review refreshes the project without changing its ID. Reload the
+  // server's release eligibility after that change; do not infer it locally.
+  }, [project]);
   async function recoverStatus() {
     const [linked, state] = await Promise.all([
       api<{ address: string | null; enabled: boolean }>("/testnet/wallet"),
