@@ -133,6 +133,13 @@ For the prototype, transaction references must be visibly synthetic and must not
 - Keyboard/mobile navigation and readable statuses are included.
 - The six scenarios in SCREENS.md can be followed from start to settlement or an explicitly pending decision.
 
-## Next deliverable
+## Implemented scenario coverage
 
-Agreement editing, saved in-memory drafts, and proposal version history are now implemented. Review those flows, then extend the prototype to paid scope changes, cancellations, and deadline escalation. This document does not select an escrow provider or authorize production deployment.
+The six core scenario paths are now available in `/demo`: normal completion,
+revision, separately funded extra work, deadline escalation, disputed work and
+cancellation/split settlement. See [the walkthrough and verification boundary](DEMO-SCENARIOS.md).
+This remains a target design, not a claim that every screen detail or optional
+wallet failure branch above has shipped. The synthetic split requires both
+participants' authorization; it does not decide real reviewer powers or appeal
+rules. Extra work ends at confirmed funding/active work, and later base milestones
+remain unfunded. No provider selection or production deployment is authorized.

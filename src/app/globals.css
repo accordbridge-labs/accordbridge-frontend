@@ -1,5 +1,40 @@
 @import "tailwindcss";
 
+.demo-scenario {
+  padding: 24px;
+  overflow-wrap: anywhere;
+}
+.demo-scenario > p,
+.demo-scenario form > p,
+.demo-scenario h3 {
+  margin: 12px 0;
+}
+.demo-scenario label {
+  display: block;
+  margin: 12px 0 6px;
+  font-weight: 600;
+}
+@media (max-width: 760px) {
+  .demo-scenario {
+    padding: 18px;
+  }
+}
+
+.detail-panel > form > input {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  padding: 10px;
+  margin: 8px 0 16px;
+  border: 1px solid #687a7b;
+  border-radius: 6px;
+  font: inherit;
+}
+.detail-panel > form > input:focus-visible {
+  outline: 3px solid #258371;
+  outline-offset: 3px;
+}
+
 .agreement-editor,
 .agreement-review {
   padding: 26px;
