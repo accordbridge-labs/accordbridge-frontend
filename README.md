@@ -75,7 +75,7 @@ Email verification, password recovery, invitations, account deletion, file uploa
 - [API contract](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/openapi.json)
 - [Contract evaluation](https://github.com/accordbridge-labs/accordbridge-contracts)
 
-License selection is pending.
+Licensed under the [MIT License](LICENSE). Dependencies retain their own licenses and notices.
 
 ## Try Stellar testnet escrow
 
