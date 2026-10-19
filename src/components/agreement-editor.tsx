@@ -2,13 +2,30 @@
 import { useState } from "react";
 import { Agreement, emptyMilestone, validateAgreement } from "@/lib/agreement";
 
+type DisplayContext = "demo" | "testnet";
+
+const displayCopy = {
+  demo: {
+    amount: "Amount (USDC)",
+    unit: "sample USDC",
+    policy:
+      "Sample USDC only. Illustrative provider fee: 0.3%, rounded to cents; platform fee: 0%. Network fees are not estimated. Reviewer escalation is a simulated scenario only. Resolver, cancellation and appeal terms remain unresolved, so these proposals cannot become live agreements.",
+  },
+  testnet: {
+    amount: "Nominal agreement amount",
+    unit: "nominal units",
+    policy:
+      "Agreement amounts are nominal terms for this experiment. Settlement uses ABUSD, which has no value and is not USDC. Only the first milestone is connected to Testnet escrow. There is no provider or platform fee; network fees use test XLM. No resolver or automatic escalation is available. A missed review deadline does not automatically release funds.",
+  },
+};
+
 export function AgreementEditor({
   draft,
   onChange,
   onSave,
   onPublish,
   creating,
-  persistent = false,
+  context,
   participants,
 }: {
   draft: Agreement;
@@ -16,9 +33,11 @@ export function AgreementEditor({
   onSave: () => void;
   onPublish: () => void;
   creating: boolean;
-  persistent?: boolean;
+  context: DisplayContext;
   participants?: string;
 }) {
+  const persistent = context === "testnet";
+  const copy = displayCopy[context];
   const [errors, setErrors] = useState<string[]>([]);
   const field = <K extends keyof Agreement>(key: K, value: Agreement[K]) =>
     onChange({ ...draft, [key]: value });
@@ -38,7 +57,7 @@ export function AgreementEditor({
         All dates use WAT (UTC+1), at 17:00. This is a development workspace;
         use fictional work details.
       </p>
-      {creating && (
+      {creating && !persistent && (
         <p className="policy-note">
           Publishing replaces the current project in this single-project demo.
           Saving a draft leaves the current project unchanged.
@@ -101,7 +120,7 @@ export function AgreementEditor({
                 </label>
                 <div className="terms-grid">
                   <label>
-                    Amount (USDC)
+                    {copy.amount}
                     <input
                       inputMode="decimal"
                       value={milestone.amount}
@@ -202,12 +221,7 @@ export function AgreementEditor({
             />
           </label>
         </div>
-        <p className="policy-note">
-          Sample USDC only. Illustrative provider fee: 0.3%, rounded to cents;
-          platform fee: 0%. Network fees are not estimated. Silence requires
-          reviewer escalation. Resolver, cancellation and appeal terms remain
-          unresolved, so these proposals cannot become live agreements.
-        </p>
+        <p className="policy-note">{copy.policy}</p>
         <div className="button-row">
           <button className="primary">Send for review</button>
           <button type="button" className="secondary" onClick={onSave}>
@@ -225,7 +239,14 @@ export function AgreementEditor({
   );
 }
 
-export function AgreementSummary({ agreement }: { agreement: Agreement }) {
+export function AgreementSummary({
+  agreement,
+  context,
+}: {
+  agreement: Agreement;
+  context: DisplayContext;
+}) {
+  const copy = displayCopy[context];
   return (
     <div className="agreement-summary">
       <h3>{agreement.title}</h3>
@@ -233,7 +254,7 @@ export function AgreementSummary({ agreement }: { agreement: Agreement }) {
       {agreement.milestones.map((item, index) => (
         <article key={index}>
           <strong>
-            {index + 1}. {item.name} · {item.amount} USDC
+            {index + 1}. {item.name} · {item.amount} {copy.unit}
           </strong>
           <p>{item.scope}</p>
           <ul>
@@ -252,6 +273,7 @@ export function AgreementSummary({ agreement }: { agreement: Agreement }) {
         days for review
       </p>
       <p>Exclusions: {agreement.exclusions}</p>
+      <p className="policy-note">{copy.policy}</p>
     </div>
   );
 }
