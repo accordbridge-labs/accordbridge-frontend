@@ -1,4 +1,5 @@
 "use client";
+import { AccountId } from "@/components/account-id";
 import { WorkReview } from "@/components/work-review";
 import { ConnectionCheck } from "@/components/connection-check";
 import { TestnetEscrow } from "@/components/testnet-escrow";
@@ -17,7 +18,14 @@ import {
   AgreementSummary,
 } from "@/components/agreement-editor";
 import { Agreement, emptyAgreement, total } from "@/lib/agreement";
-import { Account, api, ApiError, Project, ProjectSummary, serviceUnavailable } from "@/lib/api";
+import {
+  Account,
+  api,
+  ApiError,
+  Project,
+  ProjectSummary,
+  serviceUnavailable,
+} from "@/lib/api";
 
 type Editor = { agreement: Agreement; baseVersion: number; revision: number };
 
@@ -34,7 +42,6 @@ export default function Workspace() {
   const [project, setProject] = useState<Project | null>(null);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [creating, setCreating] = useState(false);
-  const [showId, setShowId] = useState(false);
 
   function fail(cause: unknown) {
     setUnavailable(serviceUnavailable(cause));
@@ -76,7 +83,8 @@ export default function Workspace() {
       setUser(account.user);
       setProjects(list.projects);
       const selected =
-        project?.id ?? new URLSearchParams(window.location.search).get("project");
+        project?.id ??
+        new URLSearchParams(window.location.search).get("project");
       if (selected) await loadProject(selected, true);
       setUnavailable(false);
       setError("");
@@ -273,7 +281,11 @@ export default function Workspace() {
           <span>Agreements are saved to your account</span>
         </div>
         <main id="main">
-          {busy && <p className="small" role="status" aria-live="polite">Processing your request…</p>}
+          {busy && (
+            <p className="small" role="status" aria-live="polite">
+              Processing your request…
+            </p>
+          )}
           {error && (
             <div className="workspace-error" role="alert">
               <p>{error}</p>
@@ -283,7 +295,9 @@ export default function Workspace() {
                   before repeating any submission with an uncertain outcome.
                 </p>
               )}
-              {unavailable && <ConnectionCheck onRecovered={recoverWorkspace} />}
+              {unavailable && (
+                <ConnectionCheck onRecovered={recoverWorkspace} />
+              )}
               {project && !unavailable && (
                 <button
                   className="secondary"
@@ -409,18 +423,7 @@ export default function Workspace() {
                       account ID. You choose their ID when creating a project;
                       no invitation email is sent.
                     </p>
-                    <button
-                      className="secondary"
-                      onClick={() => setShowId(!showId)}
-                    >
-                      {showId ? "Hide account ID" : "Show my account ID"}
-                    </button>
-                    {showId && (
-                      <p className="account-id">
-                        <strong>Your account ID</strong>
-                        <code data-testid="account-id">{user.id}</code>
-                      </p>
-                    )}
+                    <AccountId key={user.id} id={user.id} />
                   </section>
                   {creating && (
                     <section className="panel auth-card create-project">
@@ -601,12 +604,15 @@ export default function Workspace() {
                       </div>
                       {current && (
                         <>
-                          <AgreementSummary agreement={current.agreement} />
+                          <AgreementSummary
+                            agreement={current.agreement}
+                            context="testnet"
+                          />
                           <p className="agreement-total">
                             Total:{" "}
                             <strong>
                               {total(current.agreement).toLocaleString("en-US")}{" "}
-                              USDC
+                              nominal units
                             </strong>
                           </p>
                           <div className="acceptances">
@@ -741,7 +747,7 @@ export default function Workspace() {
                           onSave={() => saveDraft(false)}
                           onPublish={() => saveDraft(true)}
                           creating={false}
-                          persistent
+                          context="testnet"
                           participants={`${project.client.name} is the client; ${project.freelancer.name} is the freelancer.`}
                         />
                       </fieldset>
@@ -774,7 +780,10 @@ export default function Workspace() {
                             <summary>
                               Agreement v{item.version} · superseded
                             </summary>
-                            <AgreementSummary agreement={item.agreement} />
+                            <AgreementSummary
+                              agreement={item.agreement}
+                              context="testnet"
+                            />
                             <p className="small">
                               {item.acceptances.length} recorded acceptance(s).
                               These do not apply to the current version.

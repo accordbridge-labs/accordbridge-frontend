@@ -66,7 +66,9 @@ test("two authenticated participants save, resume, publish and accept versioned 
     await milestone
       .getByLabel("Milestone name", { exact: true })
       .fill("Design");
-    await milestone.getByLabel("Amount (USDC)", { exact: true }).fill("225.50");
+    await milestone
+      .getByLabel("Nominal agreement amount", { exact: true })
+      .fill("225.50");
     await milestone
       .getByLabel("Delivery date", { exact: true })
       .fill("2026-12-01");
@@ -162,7 +164,7 @@ test("two authenticated participants save, resume, publish and accept versioned 
       .click();
     await page
       .getByRole("group", { name: "Milestone 1", exact: true })
-      .getByLabel("Amount (USDC)", { exact: true })
+      .getByLabel("Nominal agreement amount", { exact: true })
       .fill("250");
     await page.getByRole("button", { name: "Send for review" }).click();
     await expect(

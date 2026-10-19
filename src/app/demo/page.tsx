@@ -766,7 +766,7 @@ export default function Home() {
                   <summary>
                     Review all milestones and terms · v{state.agreementVersion}
                   </summary>
-                  <AgreementSummary agreement={agreement} />
+                  <AgreementSummary agreement={agreement} context="demo" />
                 </details>
                 <p className="small">
                   Maya:{" "}
@@ -796,7 +796,10 @@ export default function Home() {
                           . These acceptances do not apply to the current
                           version.
                         </p>
-                        <AgreementSummary agreement={record.agreement} />
+                        <AgreementSummary
+                          agreement={record.agreement}
+                          context="demo"
+                        />
                       </details>
                     ))}
                   </div>
@@ -804,6 +807,7 @@ export default function Home() {
               </section>
               {editorOpen && draft && (
                 <AgreementEditor
+                  context="demo"
                   draft={draft}
                   onChange={setDraft}
                   creating={creating}
