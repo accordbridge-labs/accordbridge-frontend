@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { Agreement, emptyMilestone, validateAgreement } from "@/lib/agreement";
+import { useId, useRef, useState } from "react";
+import { Agreement, emptyMilestone, agreementErrors } from "@/lib/agreement";
 
 type DisplayContext = "demo" | "testnet";
 
@@ -38,7 +38,18 @@ export function AgreementEditor({
 }) {
   const persistent = context === "testnet";
   const copy = displayCopy[context];
-  const [errors, setErrors] = useState<string[]>([]);
+  const [submitted, setSubmitted] = useState(false);
+  const errors = submitted ? agreementErrors(draft) : [];
+  const prefix = useId();
+  const summary = useRef<HTMLDivElement>(null);
+  const id = (field: string) => `${prefix}-${field}`;
+  const attributes = (field: string) => ({
+    id: id(field),
+    "aria-invalid": errors.some((error) => error.field === field) || undefined,
+    "aria-describedby": errors.some((error) => error.field === field)
+      ? `${id(field)}-error`
+      : undefined,
+  });
   const field = <K extends keyof Agreement>(key: K, value: Agreement[K]) =>
     onChange({ ...draft, [key]: value });
   return (
@@ -67,17 +78,28 @@ export function AgreementEditor({
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
-          const next = validateAgreement(draft);
-          setErrors(next);
+          const next = agreementErrors(draft);
+          setSubmitted(true);
           if (!next.length) onPublish();
+          else requestAnimationFrame(() => summary.current?.focus());
         }}
       >
         {errors.length > 0 && (
-          <div className="form-errors" role="alert">
+          <div className="form-errors" role="alert" tabIndex={-1} ref={summary}>
             <strong>Check these fields before sending:</strong>
             <ul>
               {errors.map((error) => (
-                <li key={error}>{error}</li>
+                <li key={error.field} id={`${id(error.field)}-error`}>
+                  <a
+                    href={`#${id(error.field)}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      document.getElementById(id(error.field))?.focus();
+                    }}
+                  >
+                    {error.message}
+                  </a>
+                </li>
               ))}
             </ul>
           </div>
@@ -85,6 +107,7 @@ export function AgreementEditor({
         <label>
           Project title
           <input
+            {...attributes("title")}
             value={draft.title}
             maxLength={100}
             onChange={(event) => field("title", event.target.value)}
@@ -93,6 +116,7 @@ export function AgreementEditor({
         <label>
           Project description
           <textarea
+            {...attributes("description")}
             value={draft.description}
             maxLength={2000}
             onChange={(event) => field("description", event.target.value)}
@@ -113,6 +137,7 @@ export function AgreementEditor({
                 <label>
                   Milestone name
                   <input
+                    {...attributes(`milestones.${index}.name`)}
                     value={milestone.name}
                     maxLength={100}
                     onChange={(event) => change("name", event.target.value)}
@@ -123,6 +148,7 @@ export function AgreementEditor({
                     {copy.amount}
                     <input
                       inputMode="decimal"
+                      {...attributes(`milestones.${index}.amount`)}
                       value={milestone.amount}
                       onChange={(event) => change("amount", event.target.value)}
                     />
@@ -131,6 +157,7 @@ export function AgreementEditor({
                     Delivery date
                     <input
                       type="date"
+                      {...attributes(`milestones.${index}.dueDate`)}
                       value={milestone.dueDate}
                       onChange={(event) =>
                         change("dueDate", event.target.value)
@@ -141,6 +168,7 @@ export function AgreementEditor({
                 <label>
                   Deliverables
                   <textarea
+                    {...attributes(`milestones.${index}.scope`)}
                     value={milestone.scope}
                     maxLength={2000}
                     onChange={(event) => change("scope", event.target.value)}
@@ -149,6 +177,7 @@ export function AgreementEditor({
                 <label>
                   Acceptance criteria (one per line)
                   <textarea
+                    {...attributes(`milestones.${index}.criteria`)}
                     value={milestone.criteria}
                     maxLength={2000}
                     onChange={(event) => change("criteria", event.target.value)}
@@ -174,6 +203,7 @@ export function AgreementEditor({
         <button
           type="button"
           className="secondary"
+          {...attributes("milestones")}
           disabled={draft.milestones.length >= 10}
           onClick={() =>
             field("milestones", [...draft.milestones, emptyMilestone()])
@@ -184,6 +214,7 @@ export function AgreementEditor({
         <label>
           Exclusions
           <textarea
+            {...attributes("exclusions")}
             value={draft.exclusions}
             maxLength={2000}
             onChange={(event) => field("exclusions", event.target.value)}
@@ -196,6 +227,7 @@ export function AgreementEditor({
               type="number"
               min={0}
               max={10}
+              {...attributes("revisions")}
               value={Number.isNaN(draft.revisions) ? "" : draft.revisions}
               onChange={(event) =>
                 field(
@@ -211,6 +243,7 @@ export function AgreementEditor({
               type="number"
               min={1}
               max={30}
+              {...attributes("reviewDays")}
               value={Number.isNaN(draft.reviewDays) ? "" : draft.reviewDays}
               onChange={(event) =>
                 field(
