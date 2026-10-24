@@ -70,44 +70,58 @@ export const payout = (amount: string) => {
   const fee = Math.round((gross * 3) / 1000);
   return { gross: gross / 100, fee: fee / 100, net: (gross - fee) / 100 };
 };
-export function validateAgreement(agreement: Agreement): string[] {
-  const errors: string[] = [];
+export type AgreementError = { field: string; message: string };
+export function agreementErrors(agreement: Agreement): AgreementError[] {
+  const errors: AgreementError[] = [];
+  const add = (field: string, message: string) =>
+    errors.push({ field, message });
   if (!agreement.title.trim() || agreement.title.length > 100)
-    errors.push("Enter a project title of 1–100 characters.");
+    add("title", "Enter a project title of 1–100 characters.");
   if (!agreement.description.trim() || agreement.description.length > 2000)
-    errors.push("Enter a project description of 1–2000 characters.");
+    add("description", "Enter a project description of 1–2000 characters.");
   if (!agreement.exclusions.trim() || agreement.exclusions.length > 2000)
-    errors.push("List exclusions, or enter ‘None’ (maximum 2000 characters).");
+    add(
+      "exclusions",
+      "List exclusions, or enter ‘None’ (maximum 2000 characters).",
+    );
   if (
     !Number.isInteger(agreement.revisions) ||
     agreement.revisions < 0 ||
     agreement.revisions > 10
   )
-    errors.push("Choose 0–10 revision rounds.");
+    add("revisions", "Choose 0–10 revision rounds.");
   if (
     !Number.isInteger(agreement.reviewDays) ||
     agreement.reviewDays < 1 ||
     agreement.reviewDays > 30
   )
-    errors.push("Choose a review period of 1–30 days.");
+    add("reviewDays", "Choose a review period of 1–30 days.");
   if (!agreement.milestones.length || agreement.milestones.length > 10)
-    errors.push("Include 1–10 milestones.");
+    add("milestones", "Include 1–10 milestones.");
   agreement.milestones.forEach((item, index) => {
     const prefix = `Milestone ${index + 1}: `;
     if (!item.name.trim() || item.name.length > 100)
-      errors.push(prefix + "enter a name of 1–100 characters.");
+      add(
+        `milestones.${index}.name`,
+        prefix + "enter a name of 1–100 characters.",
+      );
     if (
       !/^\d+(\.\d{1,2})?$/.test(item.amount) ||
       cents(item.amount) < 1 ||
       cents(item.amount) > 100_000_000
     )
-      errors.push(
+      add(
+        `milestones.${index}.amount`,
         prefix + "enter 0.01–1,000,000 USDC, with at most two decimal places.",
       );
     if (!item.scope.trim() || item.scope.length > 2000)
-      errors.push(prefix + "enter the deliverables (maximum 2000 characters).");
+      add(
+        `milestones.${index}.scope`,
+        prefix + "enter the deliverables (maximum 2000 characters).",
+      );
     if (!item.criteria.trim() || item.criteria.length > 2000)
-      errors.push(
+      add(
+        `milestones.${index}.criteria`,
         prefix + "enter acceptance criteria (maximum 2000 characters).",
       );
     const date = new Date(item.dueDate + "T00:00:00Z");
@@ -116,7 +130,14 @@ export function validateAgreement(agreement: Agreement): string[] {
       !Number.isFinite(date.getTime()) ||
       date.toISOString().slice(0, 10) !== item.dueDate
     )
-      errors.push(prefix + "choose a valid delivery date.");
+      add(
+        `milestones.${index}.dueDate`,
+        prefix + "choose a valid delivery date.",
+      );
   });
   return errors;
+}
+
+export function validateAgreement(agreement: Agreement): string[] {
+  return agreementErrors(agreement).map((error) => error.message);
 }

@@ -52,7 +52,9 @@ test("two authenticated participants save, resume, publish and accept versioned 
       .getByLabel("Project description", { exact: true })
       .fill("Persistent fictional project");
     await page.getByRole("button", { name: "Save draft & close" }).click();
-    await expect(page.getByRole("status")).toContainText("Draft saved");
+    await expect(
+      page.getByRole("status").filter({ hasText: "Draft saved" }),
+    ).toBeVisible();
     const url = page.url();
     await page.reload();
     await page.getByRole("button", { name: "Resume my saved draft" }).click();

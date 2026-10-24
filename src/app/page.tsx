@@ -37,6 +37,7 @@ export default function Workspace() {
   const [error, setError] = useState("");
   const [unavailable, setUnavailable] = useState(false);
   const [notice, setNotice] = useState("");
+  const [refreshWarning, setRefreshWarning] = useState("");
   const [register, setRegister] = useState(false);
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [project, setProject] = useState<Project | null>(null);
@@ -172,9 +173,32 @@ export default function Workspace() {
       if (selected) await loadProject(selected);
     });
   }
+  async function refreshSavedProject(id: string) {
+    setRefreshWarning("");
+    try {
+      await loadProject(id);
+      await refreshList();
+    } catch {
+      setRefreshWarning(
+        "Saved state could not be reloaded. The confirmed save or publication still succeeded.",
+      );
+    }
+  }
+  async function reloadSavedProject() {
+    if (!project || running.current) return;
+    running.current = true;
+    setBusy(true);
+    try {
+      await refreshSavedProject(project.id);
+    } finally {
+      running.current = false;
+      setBusy(false);
+    }
+  }
   async function saveDraft(publish: boolean) {
     if (!project || !editor) return;
     await run(async () => {
+      setRefreshWarning("");
       const saved = await api<{ revision: number }>(
         `/projects/${project.id}/draft`,
         "PUT",
@@ -185,18 +209,32 @@ export default function Workspace() {
         },
       );
       setEditor({ ...editor, revision: saved.revision });
-      if (publish)
-        await api(`/projects/${project.id}/publish`, "POST", {
-          expectedVersion: editor.baseVersion,
-          expectedRevision: saved.revision,
-        });
-      await loadProject(project.id);
-      await refreshList();
-      setNotice(
-        publish
-          ? "New version published. Both participants must accept this version."
-          : "Draft saved to your account. You can return after refreshing.",
-      );
+      setNotice("Draft saved to your account.");
+      if (publish) {
+        try {
+          await api(`/projects/${project.id}/publish`, "POST", {
+            expectedVersion: editor.baseVersion,
+            expectedRevision: saved.revision,
+          });
+        } catch (cause) {
+          // The save was confirmed independently of the publication attempt.
+          fail(cause);
+          setError(
+            `Draft saved. Publication was not confirmed. ${cause instanceof Error ? cause.message : "Reload saved state before trying again."}`,
+          );
+          return;
+        }
+        setNotice(
+          "New version published. Both participants must accept this version.",
+        );
+      }
+      // A published editor must not be submitted again. For a saved draft,
+      // retain the confirmed revision until its replacement read succeeds.
+      if (publish) {
+        setEditor(null);
+        setCreating(false);
+      }
+      await refreshSavedProject(project.id);
     });
   }
   const current = project?.versions.find(
@@ -312,6 +350,18 @@ export default function Workspace() {
                   Reload project · discard unsaved edits
                 </button>
               )}
+            </div>
+          )}
+          {refreshWarning && (
+            <div className="workspace-error" role="alert">
+              <p>{refreshWarning}</p>
+              <button
+                className="secondary"
+                disabled={busy}
+                onClick={reloadSavedProject}
+              >
+                Reload saved state
+              </button>
             </div>
           )}
           {notice && (
