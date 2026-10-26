@@ -160,6 +160,8 @@ Browser UI ── /api same-origin proxy ──> AccordBridge backend ──> Po
 
 ## Cross-Tab Wallet Session Sync & Auto-Reconnect
 
+**Wallet connection is implemented** for the optional Stellar testnet escrow flow. This section covers two separate convenience behaviors: instant cross-tab UI synchronization and automatic Freighter reconnection.
+
 The backend authentication cookie is HttpOnly and shared by same-origin browser tabs. Each tab loads account/session state when the page opens and learns about expiry or sign-out when its next authenticated request is made. The frontend does **not** currently implement a custom cross-tab event channel for instantly synchronizing UI state.
 
 The verified public wallet address is restored from the backend when the escrow panel loads. Freighter access is requested only when the user starts a wallet action; the app checks the selected address and Stellar Testnet network again before signing. There is no silent Freighter permission prompt or automatic signing/reconnect flow. If the active Freighter account or network changes, select the verified testnet account and start the intended action again.
