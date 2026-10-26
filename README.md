@@ -2,63 +2,178 @@
 
 [![Frontend checks](https://github.com/accordbridge-labs/accordbridge-frontend/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/accordbridge-labs/accordbridge-frontend/actions/workflows/ci.yml)
 
-[Local setup](#run-locally) · [Workspace walkthrough](#try-the-persistent-workspace) · [Checks](#checks) · [Wallet flow](#try-stellar-testnet-escrow) · [Contribute](https://github.com/accordbridge-labs/.github/blob/main/docs/START-HERE.md)
+## What is AccordBridge Frontend?
 
-**Status: development/testnet prototype with hosted deployment configuration.** Next.js, React, TypeScript and Tailwind CSS provide authenticated projects backed by the NestJS/PostgreSQL service. The separate `/demo` route retains the sample payment simulator. Freighter wallet verification and experimental Stellar testnet escrow are available when configured on the backend.
+AccordBridge Frontend is the client and freelancer interface for creating projects, agreeing on versioned terms, tracking delivery, and reviewing work. It connects to the [AccordBridge backend](https://github.com/accordbridge-labs/accordbridge-backend) for accounts and saved project data, and offers an optional Freighter-powered Stellar testnet escrow flow.
 
-**Public frontend URL:** https://accordbridge-frontend.vercel.app (listed as the upstream repository's homepage; availability and end-to-end readiness must be verified on the actual deployment). The connected API relies on the deployed Render backend and Neon/PostgreSQL configuration; hosting alone does not prove live wallet acceptance. Use the [hosted two-participant acceptance runbook](docs/HOSTED-ACCEPTANCE.md) to capture evidence.
+> **Status: development / testnet prototype.** This is not a production payment service. No real-money integration exists. The saved workspace, testnet escrow, and `/demo` simulator are separate experiences. Hosted wallet acceptance is not established; see the [hosted acceptance checklist](docs/HOSTED-ACCEPTANCE.md).
 
-## Run locally
+## Contents
 
-This repo is the client/freelancer interface. The [backend](https://github.com/accordbridge-labs/accordbridge-backend)
-owns sessions, project access and transaction reconciliation; the
-[contracts](https://github.com/accordbridge-labs/accordbridge-contracts) enforce
-on-chain authorization and settlement. Freighter holds wallet keys and signs
-prepared transactions; an API response or work approval is not payment confirmation.
+- [Core Features](#core-features)
+- [Tech Stack](#tech-stack)
+- [Available Pages](#available-pages)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Installation](#installation)
+- [Environment Setup](#environment-setup)
+- [Running](#running)
+- [Component Guide](#component-guide)
+- [Architecture Notes](#architecture-notes)
+- [Cross-Tab Wallet Session Sync & Auto-Reconnect](#cross-tab-wallet-session-sync-auto-reconnect)
+- [Security](#security)
+- [Checks](#checks)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
 
-| Entry point | What to expect |
+## Core Features
+
+- **Saved project workspace:** accounts, participant-only projects, private drafts, versioned agreements, and acceptance history.
+- **Delivery and review:** versioned first-milestone submissions, HTTPS delivery links, client approval, and revision requests.
+- **Stellar testnet escrow:** optional Freighter wallet verification, participant-signed transactions, test-token funding, release, and mutual refund.
+- **Transaction recovery:** explicit chain-state checks for pending or interrupted submissions; the frontend does not blindly retry payment writes.
+- **Payment simulator:** a separate `/demo` with fictional participants and illustrative payment scenarios. Its data resets on refresh and never reaches the backend or chain.
+
+The testnet contract supports only the first milestone and uses ABUSD with no monetary value. Approval in the app is a workflow decision; chain reconciliation is required to confirm a payment.
+
+## Tech Stack
+
+| Area | Technology |
 | --- | --- |
-| `/` | Account access and the persistent project workspace; requires the backend. |
-| `/demo` | In-memory sample workflow; refresh resets it, and simulated balances never fund an escrow. |
-| First-milestone escrow panel | Testnet wallet proofs, signing and explicit chain-state checks; requires backend Testnet configuration. |
+| Framework and routing | Next.js 16, React 19, App Router |
+| Language | TypeScript |
+| Styling | Tailwind CSS 4 and project CSS |
+| Wallet integration | `@stellar/freighter-api` for Stellar Testnet access and signing |
+| Unit tests | Node test runner through `tsx` |
+| Browser tests | Playwright |
+| Hosting configuration | Vercel |
 
-Use Node.js 22.12+ or Node 24 LTS. First start the sibling [backend](https://github.com/accordbridge-labs/accordbridge-backend) following its README, including database setup and migrations.
+The project requires Node.js **22.12 or later**. See `package.json` for the installed dependency versions and available scripts.
+
+## Available Pages
+
+| Path | Purpose | Backend required? |
+| --- | --- | --- |
+| `/` | Registration/login, saved project list, agreements, delivery/review, and testnet escrow panel. | Yes, for account and saved workspace features. |
+| `/demo` | In-memory sample project and payment scenarios for exploring interface flows. | No. The simulator is local to the page and is not connected to wallets. |
+| `/api/*` | Same-origin server-side proxy for supported backend routes. | Yes. Proxies to `BACKEND_URL`. |
+
+## Project Structure
+
+```text
+src/
+├── app/
+│   ├── page.tsx                 # Saved workspace and account flows
+│   ├── demo/page.tsx            # Isolated payment simulator
+│   ├── api/[...path]/route.ts   # Same-origin backend proxy
+│   ├── layout.tsx               # Root layout and metadata
+│   ├── globals.css              # Shared styles and design tokens
+│   └── workspace.css            # Workspace-specific styles
+├── components/
+│   ├── account-id.tsx           # Participant account ID display/copy
+│   ├── agreement-editor.tsx     # Agreement draft and summary UI
+│   ├── connection-check.tsx     # User-initiated safe connectivity check
+│   ├── demo-scenarios.tsx       # Simulator-only scenarios
+│   ├── testnet-escrow.tsx       # Freighter and testnet transaction flow
+│   └── work-review.tsx          # Delivery submissions and client review
+└── lib/
+    ├── agreement.ts             # Agreement types and amount helpers
+    ├── api.ts                   # Same-origin API client and error outcomes
+    ├── connection.ts            # Safe read retry helper
+    └── demo.ts                  # In-memory simulator state and transitions
+tests/                           # Playwright browser scenarios
+docs/                             # Screen guides, demo scenarios, hosted evidence
+```
+
+## Getting Started
+
+The `/demo` simulator can run on its own. The saved workspace at `/` needs the companion [backend](https://github.com/accordbridge-labs/accordbridge-backend), PostgreSQL, and database migrations. Follow the backend README to start its local API before launching this frontend.
+
+### Requirements
+
+- Node.js 22.12 or later and npm.
+- The AccordBridge backend for registration, saved projects, and work review.
+- A deployed testnet contract and configured backend only if you want to try testnet escrow.
+
+## Installation
 
 ```sh
 npm ci
+```
+
+## Environment Setup
+
+The frontend uses a same-origin `/api` proxy. By default it forwards requests to `http://127.0.0.1:4000`; no environment file is needed for the default local setup.
+
+To use a different backend, copy [`.env.example`](.env.example) to `.env.local` and set:
+
+| Variable | Purpose | Example |
+| --- | --- | --- |
+| `BACKEND_URL` | Server-side backend origin, without `/api` or a trailing slash. | `https://api.example.com` |
+
+`BACKEND_URL` must remain server-side. Do not rename it to `NEXT_PUBLIC_BACKEND_URL` or expose it in browser code. Configure the backend's `FRONTEND_ORIGIN` to exactly match the browser origin; `localhost` and `127.0.0.1` are different origins.
+
+## Running
+
+### Development
+
+```sh
 npm run dev
 ```
 
-Open http://127.0.0.1:3000. The frontend proxies `/api` to `http://127.0.0.1:4000` by default. To change that server-side target, copy `.env.example` to `.env.local` and set `BACKEND_URL`. Never expose it as a `NEXT_PUBLIC` variable. The backend's `FRONTEND_ORIGIN` must exactly match the browser origin; `localhost` and `127.0.0.1` are different origins.
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000). The demo is available at `/demo`; the saved workspace uses the backend API at `/api`.
 
-For hosted use, the frontend is configured for Vercel and the companion backend documents Render/PostgreSQL hosting. Confirm that `BACKEND_URL`, backend `FRONTEND_ORIGIN`, secure session cookies and actual deploy health match the current stable frontend URL. Do not assume a green deployment is evidence of two-wallet testnet readiness.
+### Production build
 
-## Try the persistent workspace
+```sh
+npm run build
+npm start
+```
 
-1. Create an account with a name, email and a password of at least 12 characters. Email is a login identifier; email verification and recovery are not yet available.
-2. Have your project partner register in a different browser profile or private window. Each account can reveal its ID with **Show my account ID**.
-3. Choose **New project**, supply the other account ID, and choose your role. Roles and participants are fixed after creation. No invitation email is sent.
-4. Enter milestones, dates, scope and acceptance criteria. **Save draft & close** saves a private draft to your account; refresh and resume it to verify persistence.
-5. **Send for review** publishes an immutable version for both participants. Each must sign in to their own account to accept. There is no role switch in the saved workspace.
-6. **Propose changes** publishes a new version with fresh acceptance required. Previous versions retain their own acceptance records. A stale save or acceptance receives a conflict rather than silently overwriting newer terms.
+For Vercel, set `BACKEND_URL` in the Production environment to the backend's HTTPS origin. Configure the backend's `FRONTEND_ORIGIN` to the deployed frontend origin, then deploy. Preview deployments need a matching origin configuration. See the backend [hosting guide](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/HOSTING.md).
 
-The workspace supports multiple projects. Only participants see their projects, and each author's unpublished drafts remain private. Sessions use HttpOnly cookies, not browser storage tokens. Sign-out revokes the server session. Edited text is not saved until a save or publish request succeeds; unsaved edits are lost on refresh. A conflict keeps the editor visible and offers an explicit reload/discard action.
+## Component Guide
 
-If the backend is asleep or an API response is interrupted, entered project, agreement and delivery fields remain visible while the page stays open. Select **Check connection** for a bounded, user-initiated health read; it does not retry any project/account modification. A timed-out write may already have been committed: inspect saved state before manually deciding what to do next. Do not refresh away unsaved fields unless you have copied or saved them.
+| Component | Role |
+| --- | --- |
+| `AccountId` | Displays and copies the account ID participants share to create a project. |
+| `AgreementEditor` / `AgreementSummary` | Edits drafts and presents agreement versions and terms. |
+| `WorkReview` | Creates delivery submissions and records client approval or revision requests. |
+| `TestnetEscrow` | Links a verified wallet, prepares transactions, invokes Freighter signing, and checks reconciled testnet state. |
+| `ConnectionCheck` | Runs a bounded, user-initiated health read; it does not retry writes. |
+| `DemoScenarios` | Renders additional fictional payment scenarios on `/demo` only. |
 
-Accounts and agreement data persist in PostgreSQL. First-milestone test-token funding, release and mutual refund are connected. Versioned first-milestone delivery links, client review and revision requests are connected. Agreements currently use proposed development terms, not final live escrow policies. No funds move when accepting.
+## Architecture Notes
 
-## Payment demo
+```text
+Browser UI ── /api same-origin proxy ──> AccordBridge backend ──> PostgreSQL
+    │                                        │
+    └──── Freighter signs unsigned XDR ──────┴──> Soroban Testnet
+```
 
-Open `/demo` or **Explore payment demo**. It has fictional Maya/Tobi role controls and a single replaceable sample project. All its data stays in memory and resets on refresh. Nothing from this route is imported into your saved projects, and simulated payment states never update the backend.
+- The frontend owns presentation and user-initiated wallet prompts. The backend owns authentication, access checks, persisted workflow state, transaction intents, and chain reconciliation.
+- The proxy forwards only the required cookie, origin, JSON, and anti-CSRF headers. It does not expose the backend origin to browser JavaScript.
+- The browser signs prepared transactions through Freighter. Wallet private keys and signed XDR are not stored by the frontend application. Session storage may retain a public intent ID and transaction hash so an interrupted submission can be checked safely.
+- The saved workspace and `/demo` use separate state paths. The simulator does not call the API, connect to Freighter, or broadcast transactions.
+- An API response or work approval is not proof of payment. The UI shows escrow as funded or settled only after the backend reports a verified chain snapshot.
 
-The demo covers editable agreements, acceptance, first-milestone simulated funding, versioned submissions, bounded revisions, approval, payout confirmation and receipt. It also includes a separately accepted/funded online-store change, a manually advanced review clock, client-silence escalation, mutually authorized cancellation and itemized split settlement. Pending or unknown deposits/settlements cannot be submitted again. Later base milestones remain unfunded, and extra-work deposits are never consumed by first-milestone settlement. See the [six-scenario walkthrough](docs/DEMO-SCENARIOS.md).
+## Cross-Tab Wallet Session Sync & Auto-Reconnect
 
-Demo prices use integer cents for allocations and a 0.3% illustrative provider fee on the freelancer allocation, rounded to cents; refund/platform fees are illustrated as zero and network fees are not estimated. This is not a specification of Stellar asset precision or deployed contract fee logic. Both sample participants authorize a cancellation/split before a separate simulated submission and confirmation. Resolver authority, cancellation, appeal and final pricing terms remain unresolved. None of these new demo flows is enabled in the persistent workspace or Testnet contract.
+The backend authentication cookie is HttpOnly and shared by same-origin browser tabs. Each tab loads account/session state when the page opens and learns about expiry or sign-out when its next authenticated request is made. The frontend does **not** currently implement a custom cross-tab event channel for instantly synchronizing UI state.
+
+The verified public wallet address is restored from the backend when the escrow panel loads. Freighter access is requested only when the user starts a wallet action; the app checks the selected address and Stellar Testnet network again before signing. There is no silent Freighter permission prompt or automatic signing/reconnect flow. If the active Freighter account or network changes, select the verified testnet account and start the intended action again.
+
+## Security
+
+- Authentication uses the backend's HttpOnly session cookie; the frontend does not keep session tokens in local storage.
+- `BACKEND_URL` is server-only and the proxy disables caching, limits forwarded headers, and uses a request timeout.
+- Mutations require the backend's exact `Origin` and anti-CSRF header checks. The frontend does not send a caller-supplied role or user ID to authorize project actions.
+- Freighter signs transactions locally after explicit user action. Never enter wallet seed phrases or secret keys into AccordBridge.
+- An interrupted write may have succeeded. Inspect saved state or use **Check transaction & chain state** before attempting another write.
+- Testnet tokens have no monetary value. Mainnet payments, production wallet recovery, uploads, dispute resolution, and production operations are not implemented.
 
 ## Checks
-
-GitHub Actions runs unit tests, the production build, type checking, and desktop/mobile demo and recovery browser tests on pull requests. A separate job runs the connected workspace suite against PostgreSQL 16 and a pinned backend commit. Update that reviewed API baseline deliberately when coordinating backend changes. Wallet/chain fixtures remain synthetic in browser tests.
 
 ```sh
 npm run typecheck
@@ -69,60 +184,16 @@ npm run test:e2e
 npm run test:workspace
 ```
 
-The demo suite starts the production frontend on port 3100. The connected suite requires the sibling backend to be built, `.env.test` configured for its isolated test database, and PostgreSQL running. It starts a separate API on port 4100 and a frontend proxy on port 3100; the development services remain untouched. Run these two browser suites sequentially because they use the same frontend test port.
+The connected workspace browser suite needs the sibling backend, PostgreSQL, and an isolated test database. It starts its own API and frontend on ports 4100 and 3100. The demo and workspace browser suites both use port 3100, so run them sequentially. Browser wallet fixtures are synthetic and do not automate Freighter or establish live wallet acceptance. See the [hosted acceptance checklist](docs/HOSTED-ACCEPTANCE.md) for manual testnet evidence.
 
-Connected browser checks use two authenticated accounts to save/resume drafts across refresh, publish and accept versions, revise terms, sign out and sign back in on desktop and mobile Chromium viewports. Test fixtures are synthetic and stay only in the test database. The recovery browser tests stub HTTP and stored **public intent identifiers**; they do not sign Freighter transactions. Backend tests separately verify access denial, conflicts, session revocation and persistence across an application restart.
+## Roadmap
 
-**Live evidence is separate:** The hosted [manual runbook](docs/HOSTED-ACCEPTANCE.md) tracks two browser profiles, different Freighter Testnet wallets, test XLM, ABUSD funding, real testnet confirmations and transaction hashes. All unexecuted hosted checks are explicitly **NOT RUN**; local or mocked tests must never be called live wallet acceptance.
+This prototype's documented next areas include multi-milestone delivery and escrow, private file storage, notifications, dispute handling, wallet recovery, and production operational/security work. Cross-tab UI synchronization and resilient wallet reconnection also need a defined product and security design. These are planned areas, not shipped features or committed delivery dates. Mainnet payments require a separate contract, asset, and operational review.
 
-## Implementation boundaries
+## Contributing
 
-The frontend sends no caller role or user ID when accepting; the API derives both from the authenticated session and project membership. The same-origin proxy forwards only the required cookie, JSON, origin and anti-CSRF headers. Backend errors remain visible; an HTTP response is never presented as a chain payment.
+See the organization [contribution guide](https://github.com/accordbridge-labs/.github/blob/main/docs/START-HERE.md) before opening an issue or pull request. Keep simulator-only behavior separate from saved workspace and wallet paths, and update the relevant docs when API or user-facing flows change.
 
-Email verification, password recovery, invitations, account deletion, file uploads, mainnet payments, notifications and production operations are not implemented. Hosting is for a temporary, valueless-token testnet prototype only. Do not treat it as a production payment service until operational and security controls are reviewed.
+## License
 
-## Documents
-
-- [Hosted two-participant testnet acceptance checklist](docs/HOSTED-ACCEPTANCE.md)
-- [Hosted preflight procedure and observed results](docs/HOSTED-PREFLIGHT.md)
-- [Screen blueprint](docs/SCREENS.md)
-- [Detailed prototype blueprint](docs/PROTOTYPE-BLUEPRINT.md)
-- [Canonical product specification](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/PRODUCT.md)
-- [API contract](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/openapi.json)
-- [Contract evaluation](https://github.com/accordbridge-labs/accordbridge-contracts)
-
-Licensed under the [MIT License](LICENSE). Dependencies retain their own licenses and notices.
-
-## Try Stellar testnet escrow
-
-Configure the backend using its [testnet guide](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/TESTNET.md). In two desktop browser profiles, use separate Freighter wallets set to **Stellar Testnet**. Each participant links their wallet in a published project's escrow panel and signs a never-broadcast ownership proof. Wallet replacement is not implemented. Use the Friendbot link to obtain free test XLM for each wallet.
-
-1. Both participants accept the same application agreement.
-2. The client selects **Prepare milestone escrow**, reviews, signs, and uses **Check transaction & chain state** until deployment is confirmed. Preparing locks terms even if signing is cancelled.
-3. Both participants choose **Approve terms with wallet**, sign and check confirmation.
-4. The client gets ABUSD from the faucet, checks, prepares funding, signs and checks again. The interface shows funded only from a verified chain snapshot.
-5. Submit and approve the first milestone’s work, then the client can release to the freelancer; alternatively, each participant approves a mutual refund. Check after every signature. A single refund vote does not move funds or freeze client release.
-
-ABUSD has no monetary value and is not USDC. Existing nominal agreement amounts map to the same number of ABUSD only for this experiment. Only the first milestone is supported, with zero platform/provider fees and test-XLM network fees. There is no resolver, dispute freeze, automatic release, wallet recovery or storage-restoration workflow. This contract is unaudited and is not a production-provider selection.
-
-Cancelled signing leaves one prepared intent that can be resumed. Unknown submission keeps the existing hash pending and blocks another action. If the browser loses a signed submission response, the page retains the **public intent ID and hash** in per-profile session storage across refresh and requires an explicit **Check transaction & chain state** before another signed action. No signed XDR or authentication secret is stored there. The backend must establish a confirmed, failed or verified expired result before the browser clears an uncertain submission; missing retained ledger history requires investigation. A last-checked timestamp is a snapshot, not continuous monitoring.
-
-The backend and contracts record real testnet signature/transaction evidence. Automated browser checks do not drive the Freighter extension; manual extension approval remains a release check.
-
-## Submit and review deliverables
-
-After confirming first-milestone funding, the freelancer uses **Deliverables & review** to submit delivery notes and up to ten HTTPS links. The client refreshes the project, reviews the linked work against the accepted criteria, and approves or requests revisions with feedback. Revisions are capped by the agreement. Each resubmission preserves earlier versions and starts a new review deadline, shown in UTC.
-
-Approval enables **Review release to freelancer**. This is a separate wallet action; work approval never represents payment confirmation. The current contract can still be called directly by the client without an app review. A review deadline does not automatically release tokens or start a dispute.
-
-If actions are unavailable, use **Check transaction & chain state**: submission and review require a funded snapshot checked within five minutes, with no pending transaction. Work history remains visible after settlement.
-
-Delivery links are shared with the project partner and open externally. AccordBridge stores the submitted URL and notes, not the file contents; grant destination access yourself. Uploads, immutable file evidence, notifications and multiple-milestone delivery remain future work.
-
-The connected browser suite covers submission, revision, approval, preserved history and the separate release action on desktop and mobile, using synthetic chain snapshots in the isolated database. The recovery suite adds simulated backend delays and interrupted responses, not real extension approvals.
-
-## Vercel deployment
-
-Import this repository with Next.js, Node 24.x, root directory `.`, and the commands in `vercel.json`. Add the deployed API's HTTPS origin as **BACKEND_URL** in Vercel's Production environment, without `/api` or a trailing slash, then redeploy. This is a server-only variable. Do not upload local environment files or wallet fixture keys.
-
-The companion backend includes `render.yaml` and a [step-by-step hosting guide](https://github.com/accordbridge-labs/accordbridge-backend/blob/main/docs/HOSTING.md). Backend FRONTEND_ORIGIN must match the stable Vercel production origin exactly. Preview URLs need their own backend/origin configuration. Free-tier storage/service limitations and cold starts make this a temporary testnet demo. A [limited hosted preflight](docs/HOSTED-PREFLIGHT.md) recorded account/session, cookie and agreement checks on 18 October 2026. Hosted two-wallet signing and payment acceptance remain **NOT RUN** in the [manual runbook](docs/HOSTED-ACCEPTANCE.md); the preflight does not replace them.
+This project is licensed under the [MIT License](LICENSE). Third-party dependencies retain their own licenses and notices.
