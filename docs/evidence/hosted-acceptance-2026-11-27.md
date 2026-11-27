@@ -1,6 +1,6 @@
 # Hosted two-participant acceptance — fill-in record (2026-11-27)
 
-**STATUS: NOT RUN.** This is a blank recording sheet for the manual procedure in [HOSTED-ACCEPTANCE.md](../HOSTED-ACCEPTANCE.md). Do not fill a row as PASS without observing it on the hosted Vercel/Render/Neon environment with two distinct desktop profiles and two Freighter wallets on Stellar Testnet. Never record seeds, keys, cookies, signed XDR or private data.
+**STATUS: NOT RUN.** This is a blank recording sheet for the manual procedure in [HOSTED-ACCEPTANCE.md](../HOSTED-ACCEPTANCE.md). Use the [run kit](HOSTED-RUN-KIT.md) for pinned commits, URLs, button labels and phase order. Do not fill a row as PASS without observing it on the hosted Vercel/Render/Neon environment with two distinct desktop profiles and two Freighter wallets on Stellar Testnet. Never record seeds, keys, cookies, signed XDR or private data.
 
 ## Evidence header (fill during the run)
 
