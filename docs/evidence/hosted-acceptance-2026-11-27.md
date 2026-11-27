@@ -2,6 +2,23 @@
 
 **STATUS: NOT RUN.** This is a blank recording sheet for the manual procedure in [HOSTED-ACCEPTANCE.md](../HOSTED-ACCEPTANCE.md). Use the [run kit](HOSTED-RUN-KIT.md) for pinned commits, URLs, button labels and phase order. Do not fill a row as PASS without observing it on the hosted Vercel/Render/Neon environment with two distinct desktop profiles and two Freighter wallets on Stellar Testnet. Never record seeds, keys, cookies, signed XDR or private data.
 
+## Reference values — not observations
+
+These are expected values to compare against during the run. Copy them into the
+"Observed value" column **only after** the deployed environment actually shows
+them. A snapshot that cannot be proven from the running app stays NOT RECORDED.
+
+| Field | Reference value |
+| --- | --- |
+| Stable frontend URL | `https://accordbridge-frontend.vercel.app` |
+| Frontend `main` commit at kit creation | `3b4d13acc3f72510a77d01b7f206ffa96bdf25a1` |
+| Backend `main` commit at kit creation | `6877e09f8bd08f434aafa8f291dac8ed5b9504a7` |
+| Contracts `main` commit at kit creation | `ca37993c2afefa4c68da7c9009a7f9c0c862dc99` |
+| Escrow WASM hash | `0d17ac8fb6495f2258d1707f72157b25f0fa7a4912a2c1691364b302267f86b9` |
+| ABUSD token WASM hash | `47d4cdec1486c27f4826bd49764a09dd5eec1d7a5083be43820bca18905f45a3` |
+| ABUSD token contract | `CDUMZP5TPU4GAMUL7MQOPJUO7M3HQ2VS6QXD33L6XA6Q4BH3FIRHL3P4` |
+| Network | `Test SDF Network ; September 2015` |
+
 ## Evidence header (fill during the run)
 
 | Field | Observed value |
