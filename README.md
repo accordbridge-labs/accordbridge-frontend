@@ -7,7 +7,7 @@
 
 AccordBridge Frontend is the client and freelancer interface for creating projects, agreeing on versioned terms, tracking delivery, and reviewing work. It connects to the [AccordBridge backend](https://github.com/accordbridge-labs/accordbridge-backend) for accounts and saved project data, and offers an optional Freighter-powered Stellar testnet escrow flow.
 
-> **Status: development / testnet prototype.** This is not a production payment service. No real-money integration exists. The saved workspace, testnet escrow, and `/demo` simulator are separate experiences. Hosted wallet acceptance is not established; see the [hosted acceptance checklist](docs/HOSTED-ACCEPTANCE.md) and its [blank 27 November recording sheet](docs/evidence/hosted-acceptance-2026-11-27.md). Dependency-advisory scope and triage are documented in [DEPENDENCY-ADVISORIES.md](docs/DEPENDENCY-ADVISORIES.md).
+> **Status: development / testnet prototype.** This is not a production payment service. No real-money integration exists. The saved workspace, testnet escrow, and `/demo` simulator are separate experiences. Hosted wallet acceptance is not established; see the [hosted acceptance checklist](docs/HOSTED-ACCEPTANCE.md), the [run kit](docs/evidence/HOSTED-RUN-KIT.md) and its [blank 27 November recording sheet](docs/evidence/hosted-acceptance-2026-11-27.md). Dependency-advisory scope and triage are documented in [DEPENDENCY-ADVISORIES.md](docs/DEPENDENCY-ADVISORIES.md).
 
 ## Contents
 
@@ -197,4 +197,4 @@ See the organization [contribution guide](https://github.com/accordbridge-labs/.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE). Third-party dependencies retain their own licenses and notices.
+This project is licensed under the [Apache License 2.0](LICENSE) with the attribution notices in [NOTICE](NOTICE). Third-party dependencies retain their own licenses and notices.
