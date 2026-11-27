@@ -11,7 +11,9 @@ AccordBridge Frontend is the client and freelancer interface for creating projec
 
 ## Contents
 
+- [Scope and boundaries](#scope-and-boundaries)
 - [Core Features](#core-features)
+- [Rules the UI keeps](#rules-the-ui-keeps)
 - [Tech Stack](#tech-stack)
 - [Available Pages](#available-pages)
 - [Project Structure](#project-structure)
@@ -23,10 +25,29 @@ AccordBridge Frontend is the client and freelancer interface for creating projec
 - [Architecture Notes](#architecture-notes)
 - [Cross-Tab Wallet Session Sync & Auto-Reconnect](#cross-tab-wallet-session-sync-auto-reconnect)
 - [Security](#security)
+- [Verification status](#verification-status)
 - [Checks](#checks)
+- [Before real value](#before-real-value)
 - [Roadmap](#roadmap)
 - [Contributing](#contributing)
 - [License](#license)
+
+## Scope and boundaries
+
+This repository owns the browser experience only. The backend owns identity,
+access control, persisted workflow state, transaction intents and reconciliation;
+the Soroban contracts own escrow custody and settlement authorization.
+
+| Area | This repository does | This repository does not |
+| --- | --- | --- |
+| Accounts and workspace | Render registration/login and participant-scoped project views through the API proxy. | Store passwords, sessions, or private project data locally. |
+| Agreements | Edit drafts, publish versions, accept terms, and display acceptance history. | Define financial rules or make a version binding on chain by itself. |
+| Delivery and review | Submit versioned notes/links and record approval or revision decisions. | Fetch or preserve linked files, or arbitrate disputes. |
+| Wallet and escrow | Prompt Freighter to sign backend-prepared transactions and display verified chain state. | Hold keys, sign silently, submit transactions, or decide settlement. |
+| Simulator | Run `/demo` with in-memory fictional scenarios. | Touch the API, wallets, or the chain. |
+
+The saved workspace, the testnet escrow panel and `/demo` are three separate
+state paths. Do not read a simulator result as payment evidence.
 
 ## Core Features
 
@@ -37,6 +58,20 @@ AccordBridge Frontend is the client and freelancer interface for creating projec
 - **Payment simulator:** a separate `/demo` with fictional participants and illustrative payment scenarios. Its data resets on refresh and never reaches the backend or chain.
 
 The testnet contract supports only the first milestone and uses ABUSD with no monetary value. Approval in the app is a workflow decision; chain reconciliation is required to confirm a payment.
+
+## Rules the UI keeps
+
+These properties are intentional. Each is enforced in code and covered by a
+browser or unit test, so they survive refactoring.
+
+| Rule | Where it lives | How it is pinned |
+| --- | --- | --- |
+| A payment write is never retried automatically. | `testnet-escrow.tsx` records the intent hash before submit and locks further actions while the outcome is unknown. | `tests/recovery.spec.ts` covers lost responses and refresh with zero automatic submits. |
+| Release eligibility comes from the server, not cached component state. | The workspace refreshes escrow state after project or work changes. | `tests/save-refresh.spec.ts` and workflow specs assert the refreshed label. |
+| Freighter acts only after an explicit user action. | `Connect & verify Freighter` signs a never-broadcast ownership challenge; signing is a separate button. | `tests/workflow.spec.ts` exercises the full signed flow; no silent reconnect exists. |
+| The backend origin stays server-side. | `BACKEND_URL` is read only by the `/api` proxy and never renamed with `NEXT_PUBLIC_`. | Build/typecheck and code review; documented in Environment Setup. |
+| Simulator state never reaches the API or chain. | `/demo` uses `src/lib/demo.ts` in memory. | `tests/demo-scenarios.spec.ts` runs the six fictional scenarios without API mutation. |
+| Hosted wallet evidence must be observed, not inferred. | `docs/HOSTED-ACCEPTANCE.md` and the run kit require real hashes and balances. | Manual H01–H26 run; automated suites are recorded separately and remain **NOT RUN** for wallets. |
 
 ## Tech Stack
 
@@ -174,6 +209,26 @@ The verified public wallet address is restored from the backend when the escrow 
 - An interrupted write may have succeeded. Inspect saved state or use **Check transaction & chain state** before attempting another write.
 - Testnet tokens have no monetary value. Mainnet payments, production wallet recovery, uploads, dispute resolution, and production operations are not implemented.
 
+## Verification status
+
+Honest accounting matters when the subject is escrow, even valueless escrow.
+
+| Check | Result on `main` (27 Nov 2026) | What it establishes |
+| --- | --- | --- |
+| `npm test` | 16 passed | Isolated client logic, explicit read retries, non-replay classification. |
+| `npm run test:e2e` | 48 passed (desktop + mobile) | Synthetic browser workflows and mocked failure handling. |
+| `npm run test:workspace` | 4 passed in CI (one mobile timeout required a re-run) | Isolated backend/database persistence with synthetic chain snapshots. |
+| `npm run build` / `npm run typecheck` | Passed | Production build and strict types. |
+| `npm audit --json` | 0 advisories | Lockfile advisory scan; not an audit. |
+| [App CI](https://github.com/accordbridge-labs/accordbridge-frontend/actions/runs/46078221845) · [Advisory CI](https://github.com/accordbridge-labs/accordbridge-frontend/actions/runs/46078221691) | Passed | Post-merge checks on the Apache-2.0 commits. |
+| Hosted two-participant Freighter run H01–H26 | **NOT RUN** | No real wallet, signature, token movement or hosted chain verification has been performed here. |
+
+Automated suites use synthetic chain state and do not drive the Freighter
+extension. The manual procedure, blank recording sheet and completion gate are
+in [HOSTED-ACCEPTANCE.md](docs/HOSTED-ACCEPTANCE.md),
+[HOSTED-RUN-KIT.md](docs/evidence/HOSTED-RUN-KIT.md) and the
+[27 November sheet](docs/evidence/hosted-acceptance-2026-11-27.md).
+
 ## Checks
 
 ```sh
@@ -186,6 +241,19 @@ npm run test:workspace
 ```
 
 The connected workspace browser suite needs the sibling backend, PostgreSQL, and an isolated test database. It starts its own API and frontend on ports 4100 and 3100. The demo and workspace browser suites both use port 3100, so run them sequentially. Browser wallet fixtures are synthetic and do not automate Freighter or establish live wallet acceptance. See the [hosted acceptance checklist](docs/HOSTED-ACCEPTANCE.md) for manual testnet evidence.
+
+## Before real value
+
+This interface is for a Testnet experiment with valueless ABUSD. Real-money
+escrow would require, at minimum, a reviewed authority and dispute model, an
+audit of the exact deployed contract, a real asset and mainnet deployment,
+operational monitoring and recovery, legal/compliance decisions, and fresh
+evidence. Those are future gates, not current capabilities. See the
+[production escrow roadmap](https://github.com/accordbridge-labs/accordbridge-contracts/blob/main/docs/PRODUCTION-ESCROW-ROADMAP.md)
+and the [readiness report](https://github.com/accordbridge-labs/.github/blob/main/docs/PROGRAM-READINESS.md).
+
+Never describe an approved work submission, a mocked browser test or a clean
+advisory scan as proof of payment, an audit, or hosted wallet acceptance.
 
 ## Roadmap
 
